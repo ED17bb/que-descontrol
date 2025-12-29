@@ -684,7 +684,13 @@ export default function App() {
                     );
                 })}
             </div>
-            <button onClick={handleAddPlayer} disabled={!newPlayerName || !selectedCharId} className={`w-full py-4 rounded-xl font-bold text-lg transition-all ${(!newPlayerName || !selectedCharId) ? 'bg-slate-700 text-slate-500' : 'bg-blue-600 text-white hover:bg-blue-500 shadow-lg'}`}>AGREGAR</button>
+            <button 
+                onClick={handleAddPlayer} 
+                disabled={!newPlayerName || !selectedCharId} 
+                className={`w-full py-4 rounded-xl font-bold text-lg transition-all flex items-center justify-center gap-2 ${(!newPlayerName || !selectedCharId) ? 'bg-slate-700 text-slate-500' : 'bg-blue-600 text-white hover:bg-blue-500 shadow-lg'}`}
+            >
+                <UserPlus size={24} /> AGREGAR
+            </button>
         </div>
 
         <div className="w-1/3 h-full bg-slate-900 p-6 rounded-3xl border border-white/5 overflow-y-auto">
@@ -729,7 +735,12 @@ export default function App() {
                     
                     <div className="bg-slate-800 p-6 rounded-2xl border border-white/10">
                         <p className="text-2xl font-medium leading-relaxed">{currentEvent.data.text}</p>
-                        {currentEvent.data.actionText && <div className="mt-4 inline-block bg-black/40 px-4 py-1 rounded-lg text-yellow-400 text-sm font-bold uppercase">{currentEvent.data.actionText}</div>}
+                        {currentEvent.data.actionText && (
+                            <div className="mt-4 inline-block bg-black/40 px-4 py-1 rounded-lg text-yellow-400 text-sm font-bold uppercase">
+                                <AlertTriangle size={16} className="inline mr-2 mb-1" />
+                                {currentEvent.data.actionText}
+                            </div>
+                        )}
                         {currentEvent.data.answer && (
                             <details className="mt-4 pt-4 border-t border-white/10 cursor-pointer text-slate-500 hover:text-white">
                                 <summary className="text-sm italic list-none">Ver respuesta</summary>
@@ -772,7 +783,9 @@ export default function App() {
 
         {/* HUD DERECHO (Dado) */}
         <div className="absolute top-6 right-6 z-40 flex flex-col items-end gap-4">
-            <button onClick={() => setAudioEnabled(!audioEnabled)} className="pointer-events-auto p-3 bg-slate-800/80 backdrop-blur rounded-full hover:bg-slate-700 border border-white/10">{audioEnabled ? <Volume2 size={24} className="text-green-400" /> : <VolumeX size={24} className="text-red-400" />}</button>
+            <button onClick={() => setAudioEnabled(!audioEnabled)} className="pointer-events-auto p-3 bg-slate-800/80 backdrop-blur rounded-full hover:bg-slate-700 border border-white/10 transition-transform active:scale-90">
+                {audioEnabled ? <Volume2 size={24} className="text-green-400" /> : <VolumeX size={24} className="text-red-400" />}
+            </button>
             
             {view === 'game' && !currentEvent && (
                <div className="pointer-events-auto mt-4 animate-in slide-in-from-right-10 duration-500 flex flex-col items-center gap-2">
