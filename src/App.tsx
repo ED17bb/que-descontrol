@@ -1,5 +1,6 @@
-import React, { useState, useMemo, useEffect, useRef } from 'react';
-import { UserPlus, Play, RotateCcw, Skull, HelpCircle, Swords, PartyPopper, Zap, AlertTriangle, Volume2, VolumeX, Crown, History, Camera, Trash2, LucideIcon } from 'lucide-react';
+import { useState, useMemo, useEffect, useRef } from 'react';
+import { UserPlus, Play, RotateCcw, Skull, HelpCircle, Swords, PartyPopper, Zap, AlertTriangle, Volume2, VolumeX, Crown, History, Camera, Trash2 } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 
 // --- DEFINICIONES DE TIPOS (TYPESCRIPT) ---
 interface Player {
