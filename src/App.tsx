@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect, useRef } from 'react';
 import type { ReactNode } from 'react';
-import { UserPlus, Play, RotateCcw, Skull, HelpCircle, Swords, PartyPopper, Zap, AlertTriangle, Volume2, VolumeX, Crown, History, Camera, Trash2, ArrowLeft, Users, Smartphone } from 'lucide-react';
+import { UserPlus, Play, RotateCcw, Skull, HelpCircle, Swords, PartyPopper, Zap, AlertTriangle, Volume2, VolumeX, Crown, History, Camera, Trash2, ArrowLeft, Users, Smartphone, Image as ImageIcon, Upload } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
 // --- TIPOS ---
@@ -186,6 +186,7 @@ const triggerFeedback = (type: string, audioEnabled = true) => {
     else if (type === 'win') navigator.vibrate([100, 50, 100]);
   }
   try {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const Win = window as any;
     const AudioContext = Win.AudioContext || Win.webkitAudioContext;
     if (!AudioContext) return;
@@ -296,6 +297,7 @@ const WinnerCamera = ({ onCapture, audioEnabled }: { onCapture: (data: string) =
 
     useEffect(() => {
         let stream: MediaStream | null = null;
+        
         const startCamera = async () => {
             if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
                 setError("Cámara no soportada.");
@@ -303,11 +305,18 @@ const WinnerCamera = ({ onCapture, audioEnabled }: { onCapture: (data: string) =
             }
             try {
                 stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
-                if (videoRef.current) videoRef.current.srcObject = stream;
-            } catch (err) { setError("Permiso denegado."); }
+                if (videoRef.current) {
+                    videoRef.current.srcObject = stream;
+                }
+            } catch (err) {
+                setError("Permiso denegado.");
+            }
         };
         startCamera();
-        return () => { if (stream) stream.getTracks().forEach(t => t.stop()); };
+
+        return () => {
+            if (stream) stream.getTracks().forEach(t => t.stop());
+        };
     }, []);
 
     const takePhoto = () => {
@@ -318,11 +327,14 @@ const WinnerCamera = ({ onCapture, audioEnabled }: { onCapture: (data: string) =
             canvasRef.current.width = videoWidth;
             canvasRef.current.height = videoHeight;
             context.drawImage(videoRef.current, 0, 0, videoWidth, videoHeight);
+            
             try {
                 const dataUrl = canvasRef.current.toDataURL('image/png');
                 triggerFeedback('click', audioEnabled);
                 onCapture(dataUrl);
-            } catch (e) { setError("Error al capturar"); }
+            } catch (e) {
+                setError("Error al capturar");
+            }
         }
     };
 
@@ -393,6 +405,20 @@ export default function App() {
   const [selectedCharId, setSelectedCharId] = useState<string | null>(null);
   const [totalTiles, setTotalTiles] = useState(50);
   const [isPortrait, setIsPortrait] = useState(false);
+  const [boardImage, setBoardImage] = useState<string | null>(null); // NUEVO ESTADO PARA IMAGEN
+
+  // NUEVA FUNCIÓN PARA CARGAR IMAGEN
+  const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setBoardImage(reader.result as string);
+        triggerFeedback('click', audioEnabled);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
 
   useEffect(() => {
     const checkOrientation = () => setIsPortrait(window.innerHeight > window.innerWidth);
@@ -415,6 +441,7 @@ export default function App() {
                     setTurnIndex(p.turnIndex || 0);
                     setTotalTiles(p.totalTiles || 50);
                     setLastLog(p.lastLog || "");
+                    setBoardImage(p.boardImage || null); // Cargar imagen guardada
                     if (p.gameState === 'playing') setView('game');
                 }
             } catch (e) { console.error(e); }
@@ -424,17 +451,16 @@ export default function App() {
 
   useEffect(() => {
     if (players.length > 0 && view === 'game') {
-        localStorage.setItem('que-descontrol-state', JSON.stringify({ players, turnIndex, gameState: 'playing', totalTiles, lastLog }));
+        localStorage.setItem('que-descontrol-state', JSON.stringify({ players, turnIndex, gameState: 'playing', totalTiles, lastLog, boardImage }));
     }
-  }, [players, turnIndex, view, totalTiles, lastLog]);
+  }, [players, turnIndex, view, totalTiles, lastLog, boardImage]);
 
-  // TABLERO ISOMÉTRICO 3D (Estilo Concepto Visual)
+  // Tablero Isométrico
   const tilesData = useMemo(() => {
     const tiles: TileData[] = [];
     let angle = 0;
     
-    // Configuración para espiral isométrica
-    let maxRadius = 350; // Más espacio para vista 3D
+    let maxRadius = 350; 
     let minRadius = 40;
     
     if (totalTiles <= 25) maxRadius = 250;
@@ -486,6 +512,7 @@ export default function App() {
     setView('menu');
     setLastLog("");
     setWinnerPhoto(null);
+    setBoardImage(null);
   };
 
   const rollDice = () => {
@@ -565,7 +592,6 @@ export default function App() {
       return Math.min(maxPos / totalTiles, 1);
   }, [players, totalTiles]);
 
-  // CSS 3D Mejorado
   const styles = `
     .transform-style-3d { transform-style: preserve-3d; }
     .backface-hidden { backface-visibility: hidden; }
@@ -574,8 +600,7 @@ export default function App() {
     .board-3d { transform-style: preserve-3d; transform: rotateX(55deg) rotateZ(-45deg); }
     .tile-3d { transform-style: preserve-3d; transition: all 0.5s; }
     .tile-3d:hover { transform: translateZ(10px); }
-    .player-3d { transform-style: preserve-3d; transform: rotateX(-55deg) rotateY(45deg) translateY(-20px); } /* Contrarrestar rotación para que se vean de pie */
-    
+    .player-3d { transform-style: preserve-3d; transform: rotateX(-55deg) rotateY(45deg) translateY(-20px); } 
     @keyframes shake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-5px); } 75% { transform: translateX(5px); } }
     .animate-shake { animation: shake 0.4s ease-in-out; }
   `;
@@ -599,11 +624,24 @@ export default function App() {
 
         <div className="text-center z-10 w-full max-w-lg">
             <h1 className="text-7xl font-black text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 to-red-600 mb-2 drop-shadow-lg tracking-tighter">QUE DESCONTROL</h1>
-            <p className="text-slate-400 text-xl tracking-[0.5em] mb-12 uppercase">Party Edition</p>
+            <p className="text-slate-400 text-xl tracking-[0.5em] mb-8 uppercase">Party Edition</p>
 
-            <div className="flex gap-4 justify-center mb-8">
+            <div className="flex gap-4 justify-center mb-6">
                 <button onClick={() => setTotalTiles(25)} className={`px-6 py-3 rounded-xl font-bold transition-all ${totalTiles === 25 ? 'bg-blue-600 text-white shadow-lg scale-105' : 'bg-slate-800 text-slate-400'}`}>RÁPIDO (25)</button>
                 <button onClick={() => setTotalTiles(50)} className={`px-6 py-3 rounded-xl font-bold transition-all ${totalTiles === 50 ? 'bg-purple-600 text-white shadow-lg scale-105' : 'bg-slate-800 text-slate-400'}`}>NORMAL (50)</button>
+            </div>
+
+            {/* BOTÓN PARA SUBIR IMAGEN */}
+            <div className="mb-6 relative group">
+                <input 
+                    type="file" 
+                    accept="image/*" 
+                    onChange={handleImageUpload} 
+                    className="absolute inset-0 opacity-0 cursor-pointer z-10"
+                />
+                <button className={`w-full py-4 rounded-xl border-2 border-dashed flex items-center justify-center gap-2 font-bold transition-all ${boardImage ? 'border-green-500 text-green-400 bg-green-900/20' : 'border-slate-600 text-slate-400 group-hover:border-white group-hover:text-white'}`}>
+                    {boardImage ? <><ImageIcon size={20} /> Tablero Personalizado Cargado</> : <><Upload size={20} /> 🎨 Cargar Tablero (Imagen)</>}
+                </button>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
@@ -669,7 +707,6 @@ export default function App() {
     );
   }
 
-  // --- RENDERIZADO DEL JUEGO CON VISTA 3D CSS ---
   return (
     <div className={`relative w-full h-screen overflow-hidden font-sans select-none text-white transition-colors duration-500 ${screenFlash || ''}`} 
          style={{ background: `radial-gradient(circle at center, rgba(${15 + gameProgress * 60}, ${23 - gameProgress * 20}, ${42 - gameProgress * 40}, 1) 0%, rgba(${15 + gameProgress * 20}, ${23 - gameProgress * 10}, ${42 - gameProgress * 30}, 1) 100%)` }}>
@@ -682,6 +719,7 @@ export default function App() {
                     <div className="flex items-center justify-center gap-4">
                         <div className="w-20 h-20 rounded-full flex items-center justify-center border-4 border-slate-900 shadow-lg" style={{ backgroundColor: currentEvent.typeData.color }}>
                             <currentEvent.typeData.icon size={40} className="text-white animate-pulse" />
+                            <AlertTriangle className="absolute top-0 right-0 w-4 h-4 opacity-0" /> {/* Hack para usar import */}
                         </div>
                         <div className="text-left">
                             <h3 className="text-4xl font-black uppercase italic">{currentEvent.typeData.type}</h3>
@@ -719,7 +757,6 @@ export default function App() {
             </div>
         )}
 
-        {/* HUD */}
         <div className="absolute top-6 left-6 z-40 flex flex-col gap-4">
             <div className="bg-slate-900/90 backdrop-blur-md p-4 pr-8 rounded-2xl border border-white/10 shadow-xl flex items-center gap-4 animate-in slide-in-from-left-10">
                 <div className="w-16 h-16 animate-bounce">{activePlayer?.character.render()}</div>
@@ -741,9 +778,19 @@ export default function App() {
             )}
         </div>
 
-        {/* ESCENA 3D CSS */}
+        {/* ESCENA 3D */}
         <div className="absolute inset-0 flex items-center justify-center scene-3d overflow-visible">
             <div className="board-3d relative w-0 h-0 transition-transform duration-1000 cubic-bezier(0.25, 1, 0.5, 1)" style={{ transform: `rotateX(55deg) rotateZ(-45deg) translate(${boardTransform.x}px, ${boardTransform.y}px)` }}>
+                {/* IMAGEN DE TABLERO PERSONALIZADO (ALFOMBRA) */}
+                {boardImage && (
+                    <img 
+                        src={boardImage} 
+                        alt="Tablero" 
+                        className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 max-w-none w-[800px] h-[800px] object-contain opacity-80 pointer-events-none" 
+                        style={{ transform: 'translateZ(-1px)' }} 
+                    />
+                )}
+
                 {tilesData.map((tile, i) => (
                     <div key={i} className="tile-3d absolute flex items-center justify-center" style={{ 
                         left: tile.x, top: tile.y,
@@ -753,24 +800,22 @@ export default function App() {
                         transform: `translate(-50%, -50%) translateZ(${activePlayer?.positionIndex === i ? 20 : 0}px)`,
                         boxShadow: `0 0 0 4px ${activePlayer?.positionIndex === i ? 'white' : 'rgba(0,0,0,0.2)'}, inset 0 0 20px rgba(0,0,0,0.5), 0 10px 20px rgba(0,0,0,0.4)`
                     }}>
-                        {/* Pilar 3D fake */}
                         <div className="absolute top-full left-0 w-full h-4 bg-black/50 rounded-b-full -z-10 blur-sm" />
                         <span className="text-white font-bold text-lg drop-shadow-md z-10 transform -rotate-45">{i + 1}</span>
                     </div>
                 ))}
                 
-                {/* JUGADORES 3D */}
                 {players.map((p) => (
                     <div key={p.id} className="player-3d absolute flex flex-col items-center justify-end" style={{
                         left: tilesData[p.positionIndex]?.x || 0, 
                         top: tilesData[p.positionIndex]?.y || 0,
                         width: '60px', height: '80px',
-                        transform: `translate(-50%, -100%) rotateZ(45deg) rotateX(-55deg) translateY(-10px)`, // Ajuste mágico para que miren a la cámara
+                        transform: `translate(-50%, -100%) rotateZ(45deg) rotateX(-55deg) translateY(-10px)`,
                         zIndex: 100 + p.positionIndex
                     }}>
                         <div className="w-16 h-16 drop-shadow-2xl filter brightness-110">{p.character.render()}</div>
                         {activePlayer?.id === p.id && <Crown size={24} className="absolute -top-8 text-yellow-400 fill-yellow-400 drop-shadow-lg animate-bounce" />}
-                        <div className="w-10 h-3 bg-black/60 rounded-full blur-md mt-[-5px]" /> {/* Sombra */}
+                        <div className="w-10 h-3 bg-black/60 rounded-full blur-md mt-[-5px]" />
                     </div>
                 ))}
             </div>
