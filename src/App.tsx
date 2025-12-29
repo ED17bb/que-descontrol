@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect, useRef } from 'react';
+import type { ReactNode } from 'react'; // Importamos el tipo específico para evitar errores
 import { UserPlus, Play, RotateCcw, Skull, HelpCircle, Swords, PartyPopper, Zap, AlertTriangle, Volume2, VolumeX, Crown, History, Camera, Trash2 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
@@ -7,14 +8,14 @@ interface Character {
   id: string;
   name: string;
   color: string;
-  render: () => JSX.Element;
+  render: () => ReactNode; // Usamos ReactNode en lugar de JSX.Element
 }
 
 interface Player {
   id: number;
   name: string;
   positionIndex: number;
-  character: Character; // Ahora guardamos el personaje completo
+  character: Character; 
 }
 
 interface TileType {
@@ -35,9 +36,9 @@ interface GameEventData {
   text: string;
   penalty?: number;
   bonus?: number;
+  timer?: number; // Reincorporado como opcional por compatibilidad
   actionText?: string;
   answer?: string;
-  // Timer eliminado a petición
 }
 
 interface CurrentEvent {
@@ -51,9 +52,9 @@ const CHARACTERS: Character[] = [
     id: 'link', name: 'Link', color: '#10b981', 
     render: () => (
       <svg viewBox="0 0 100 100" className="w-full h-full drop-shadow-md">
-        <path d="M20,80 L50,10 L80,80 Z" fill="#10b981" /> {/* Gorro */}
-        <circle cx="50" cy="70" r="20" fill="#fcd34d" /> {/* Pelo */}
-        <rect x="45" y="10" width="10" height="90" fill="#fbbf24" transform="rotate(-45 50 50)" /> {/* Espada */}
+        <path d="M20,80 L50,10 L80,80 Z" fill="#10b981" /> 
+        <circle cx="50" cy="70" r="20" fill="#fcd34d" /> 
+        <rect x="45" y="10" width="10" height="90" fill="#fbbf24" transform="rotate(-45 50 50)" /> 
       </svg>
     )
   },
@@ -61,11 +62,11 @@ const CHARACTERS: Character[] = [
     id: 'titan', name: 'Titán', color: '#ef4444', 
     render: () => (
       <svg viewBox="0 0 100 100" className="w-full h-full drop-shadow-md">
-        <rect x="20" y="20" width="60" height="70" rx="10" fill="#991b1b" /> {/* Cara */}
-        <rect x="25" y="25" width="50" height="60" rx="5" fill="#ef4444" /> {/* Músculo */}
-        <circle cx="35" cy="45" r="5" fill="white" /> {/* Ojo */}
-        <circle cx="65" cy="45" r="5" fill="white" /> {/* Ojo */}
-        <rect x="35" y="70" width="30" height="5" fill="white" /> {/* Dientes */}
+        <rect x="20" y="20" width="60" height="70" rx="10" fill="#991b1b" /> 
+        <rect x="25" y="25" width="50" height="60" rx="5" fill="#ef4444" /> 
+        <circle cx="35" cy="45" r="5" fill="white" /> 
+        <circle cx="65" cy="45" r="5" fill="white" /> 
+        <rect x="35" y="70" width="30" height="5" fill="white" /> 
       </svg>
     )
   },
@@ -73,9 +74,9 @@ const CHARACTERS: Character[] = [
     id: 'trump', name: 'Presi', color: '#3b82f6', 
     render: () => (
       <svg viewBox="0 0 100 100" className="w-full h-full drop-shadow-md">
-        <circle cx="50" cy="50" r="35" fill="#fdba74" /> {/* Cara */}
-        <path d="M20,40 Q50,0 80,40" fill="#fcd34d" stroke="#f59e0b" strokeWidth="3" /> {/* Copete */}
-        <rect x="40" y="75" width="20" height="25" fill="#ef4444" /> {/* Corbata */}
+        <circle cx="50" cy="50" r="35" fill="#fdba74" /> 
+        <path d="M20,40 Q50,0 80,40" fill="#fcd34d" stroke="#f59e0b" strokeWidth="3" /> 
+        <rect x="40" y="75" width="20" height="25" fill="#ef4444" /> 
       </svg>
     )
   },
@@ -84,8 +85,8 @@ const CHARACTERS: Character[] = [
     render: () => (
       <svg viewBox="0 0 100 100" className="w-full h-full drop-shadow-md">
         <circle cx="50" cy="60" r="30" fill="#fbcfe8" />
-        <path d="M30,30 L40,50 L50,20 L60,50 L70,30 L50,50 Z" fill="#fbbf24" /> {/* Corona */}
-        <circle cx="50" cy="60" r="5" fill="#db2777" /> {/* Joya */}
+        <path d="M30,30 L40,50 L50,20 L60,50 L70,30 L50,50 Z" fill="#fbbf24" /> 
+        <circle cx="50" cy="60" r="5" fill="#db2777" /> 
       </svg>
     )
   },
@@ -94,8 +95,8 @@ const CHARACTERS: Character[] = [
     render: () => (
       <svg viewBox="0 0 100 100" className="w-full h-full drop-shadow-md">
         <circle cx="50" cy="50" r="35" fill="#fdba74" />
-        <path d="M20,80 Q50,100 80,80" fill="none" stroke="#ea580c" strokeWidth="8" /> {/* Túnica */}
-        <circle cx="50" cy="45" r="3" fill="#000" /> {/* Punto frente */}
+        <path d="M20,80 Q50,100 80,80" fill="none" stroke="#ea580c" strokeWidth="8" /> 
+        <circle cx="50" cy="45" r="3" fill="#000" /> 
       </svg>
     )
   },
@@ -104,8 +105,8 @@ const CHARACTERS: Character[] = [
     render: () => (
       <svg viewBox="0 0 100 100" className="w-full h-full drop-shadow-md">
         <circle cx="50" cy="50" r="40" fill="white" stroke="#ef4444" strokeWidth="2" />
-        <circle cx="50" cy="50" r="15" fill="#ef4444" /> {/* Sol naciente */}
-        <rect x="20" y="40" width="60" height="10" fill="#ef4444" opacity="0.3" /> {/* Banda */}
+        <circle cx="50" cy="50" r="15" fill="#ef4444" /> 
+        <rect x="20" y="40" width="60" height="10" fill="#ef4444" opacity="0.3" /> 
       </svg>
     )
   },
@@ -114,8 +115,8 @@ const CHARACTERS: Character[] = [
     render: () => (
       <svg viewBox="0 0 100 100" className="w-full h-full drop-shadow-md">
         <circle cx="50" cy="50" r="35" fill="#d4a373" />
-        <rect x="30" y="45" width="40" height="10" fill="#1e293b" /> {/* Gafas */}
-        <rect x="45" y="20" width="10" height="80" fill="#3f2c22" rx="5" /> {/* Trenza */}
+        <rect x="30" y="45" width="40" height="10" fill="#1e293b" /> 
+        <rect x="45" y="20" width="10" height="80" fill="#3f2c22" rx="5" /> 
       </svg>
     )
   },
@@ -124,8 +125,8 @@ const CHARACTERS: Character[] = [
     render: () => (
       <svg viewBox="0 0 100 100" className="w-full h-full drop-shadow-md">
         <circle cx="50" cy="60" r="25" fill="#fdba74" />
-        <path d="M20,50 L10,20 L40,30 L50,5 L60,30 L90,20 L80,50 Z" fill="#000" /> {/* Pelo picudo */}
-        <rect x="25" y="80" width="50" height="20" fill="#f97316" /> {/* Gi */}
+        <path d="M20,50 L10,20 L40,30 L50,5 L60,30 L90,20 L80,50 Z" fill="#000" /> 
+        <rect x="25" y="80" width="50" height="20" fill="#f97316" /> 
       </svg>
     )
   },
@@ -134,8 +135,8 @@ const CHARACTERS: Character[] = [
     render: () => (
       <svg viewBox="0 0 100 100" className="w-full h-full drop-shadow-md">
         <circle cx="50" cy="60" r="35" fill="#f472b6" />
-        <path d="M50,30 Q80,10 90,30" fill="none" stroke="#f472b6" strokeWidth="12" strokeLinecap="round" /> {/* Antena */}
-        <rect x="35" y="55" width="30" height="5" fill="black" rx="2" /> {/* Ojos cerrados */}
+        <path d="M50,30 Q80,10 90,30" fill="none" stroke="#f472b6" strokeWidth="12" strokeLinecap="round" /> 
+        <rect x="35" y="55" width="30" height="5" fill="black" rx="2" /> 
       </svg>
     )
   },
@@ -143,12 +144,12 @@ const CHARACTERS: Character[] = [
     id: 'panda', name: 'Panda', color: '#1f2937', 
     render: () => (
       <svg viewBox="0 0 100 100" className="w-full h-full drop-shadow-md">
-        <circle cx="30" cy="30" r="12" fill="black" /> {/* Oreja */}
-        <circle cx="70" cy="30" r="12" fill="black" /> {/* Oreja */}
+        <circle cx="30" cy="30" r="12" fill="black" /> 
+        <circle cx="70" cy="30" r="12" fill="black" /> 
         <circle cx="50" cy="55" r="35" fill="white" />
-        <circle cx="35" cy="50" r="8" fill="black" /> {/* Ojo */}
-        <circle cx="65" cy="50" r="8" fill="black" /> {/* Ojo */}
-        <circle cx="50" cy="65" r="4" fill="black" /> {/* Nariz */}
+        <circle cx="35" cy="50" r="8" fill="black" /> 
+        <circle cx="65" cy="50" r="8" fill="black" /> 
+        <circle cx="50" cy="65" r="4" fill="black" /> 
       </svg>
     )
   }
