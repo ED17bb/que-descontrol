@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect, useRef } from 'react';
 import type { ReactNode } from 'react';
-import { UserPlus, Play, RotateCcw, Skull, HelpCircle, Swords, PartyPopper, Zap, AlertTriangle, Volume2, VolumeX, Crown, History, Camera, Trash2, ArrowLeft, Users, Smartphone, Trophy } from 'lucide-react';
+import { UserPlus, Play, RotateCcw, Skull, HelpCircle, Swords, PartyPopper, Zap, AlertTriangle, Volume2, VolumeX, Crown, History, Camera, Trash2, ArrowLeft, Users, Smartphone, Trophy, Dice5 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
 // --- TIPOS ---
@@ -189,22 +189,23 @@ const WinnerCamera = ({ onCapture, audioEnabled }: { onCapture: (data: string) =
     );
 };
 
+// DADO MEJORADO
 const Dice3D = ({ rolling, value, onRoll }: { rolling: boolean; value: number; onRoll: () => void }) => {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const faces: any = { 1: 'rotateX(0deg) rotateY(0deg)', 2: 'rotateX(-90deg) rotateY(0deg)', 3: 'rotateX(0deg) rotateY(-90deg)', 4: 'rotateX(0deg) rotateY(90deg)', 5: 'rotateX(90deg) rotateY(0deg)', 6: 'rotateX(180deg) rotateY(0deg)' };
   return (
-    <div className="relative w-24 h-24 perspective-1000 group cursor-pointer" onClick={onRoll}>
-        <div className="w-full h-full relative transform-style-3d transition-transform duration-[800ms] ease-out" style={{ transform: rolling ? `rotateX(${Math.random() * 1000}deg) rotateY(${Math.random() * 1000}deg)` : (faces[value] || faces[1]) }}>
+    <div className="relative w-16 h-16 perspective-1000 group cursor-pointer hover:scale-105 transition-transform" onClick={onRoll}>
+        <div className="w-full h-full relative transform-style-3d transition-transform duration-[800ms] ease-out" style={{ transform: rolling ? `rotateX(${Math.random() * 1000 + 360}deg) rotateY(${Math.random() * 1000 + 360}deg)` : (faces[value] || faces[1]) }}>
             {[
-              { id: 1, rot: 'translateZ(48px)', dots: [4] },
-              { id: 6, rot: 'rotateY(180deg) translateZ(48px)', dots: [0,2,3,5,6,8] },
-              { id: 2, rot: 'rotateX(90deg) translateZ(48px)', dots: [0,8] },
-              { id: 5, rot: 'rotateX(-90deg) translateZ(48px)', dots: [0,2,4,6,8] },
-              { id: 3, rot: 'rotateY(-90deg) translateZ(48px)', dots: [0,4,8] },
-              { id: 4, rot: 'rotateY(90deg) translateZ(48px)', dots: [0,2,6,8] }
+              { id: 1, rot: 'translateZ(32px)', dots: [4] },
+              { id: 6, rot: 'rotateY(180deg) translateZ(32px)', dots: [0,2,3,5,6,8] },
+              { id: 2, rot: 'rotateX(90deg) translateZ(32px)', dots: [0,8] },
+              { id: 5, rot: 'rotateX(-90deg) translateZ(32px)', dots: [0,2,4,6,8] },
+              { id: 3, rot: 'rotateY(-90deg) translateZ(32px)', dots: [0,4,8] },
+              { id: 4, rot: 'rotateY(90deg) translateZ(32px)', dots: [0,2,6,8] }
             ].map(face => (
-               <div key={face.id} className="absolute w-24 h-24 bg-white border-2 border-slate-300 rounded-2xl grid grid-cols-3 grid-rows-3 p-3 gap-1 backface-hidden" style={{ transform: face.rot }}>
-                  {[...Array(9)].map((_, i) => <div key={i} className={`rounded-full transition-all ${face.dots.includes(i) ? 'bg-black shadow-inner scale-100' : 'bg-transparent scale-0'}`} />)}
+               <div key={face.id} className="absolute w-16 h-16 bg-white border border-slate-300 rounded-lg grid grid-cols-3 grid-rows-3 p-1 gap-1 backface-hidden shadow-inner" style={{ transform: face.rot }}>
+                  {[...Array(9)].map((_, i) => <div key={i} className={`rounded-full transition-all ${face.dots.includes(i) ? 'bg-black scale-100' : 'bg-transparent scale-0'}`} />)}
                </div>
             ))}
         </div>
@@ -221,6 +222,7 @@ export default function App() {
   const [diceValue, setDiceValue] = useState(1);
   const [isRolling, setIsRolling] = useState(false);
   const [currentEvent, setCurrentEvent] = useState<CurrentEvent | null>(null);
+  const [tileNotification, setTileNotification] = useState<TileType | null>(null); // NUEVO ESTADO PARA AVISO PREVIO
   const [screenFlash, setScreenFlash] = useState<string | null>(null); 
   const [audioEnabled, setAudioEnabled] = useState(true);
   const [lastLog, setLastLog] = useState(""); 
@@ -228,6 +230,7 @@ export default function App() {
   const [selectedCharId, setSelectedCharId] = useState<string | null>(null);
   const [totalTiles, setTotalTiles] = useState(50);
   const [isPortrait, setIsPortrait] = useState(false);
+  const [boardImage, setBoardImage] = useState<string | null>(null); // Se mantiene pero no se usa
 
   useEffect(() => {
     const checkOrientation = () => setIsPortrait(window.innerHeight > window.innerWidth);
@@ -258,17 +261,17 @@ export default function App() {
 
   useEffect(() => {
     if (players.length > 0 && view === 'game') {
-        localStorage.setItem('que-descontrol-state', JSON.stringify({ players, turnIndex, gameState: 'playing', totalTiles, lastLog }));
+        localStorage.setItem('que-descontrol-state', JSON.stringify({ players, turnIndex, gameState: 'playing', totalTiles, lastLog, boardImage }));
     }
-  }, [players, turnIndex, view, totalTiles, lastLog]);
+  }, [players, turnIndex, view, totalTiles, lastLog, boardImage]);
 
   // GENERACIÓN DE TABLERO: SNAKE PATH OPTIMIZADO (SERPIENTE)
   const tilesData = useMemo(() => {
     const tiles: TileData[] = [];
-    const rows = 4; // Fijo para estructura
+    const rows = 4;
     const cols = Math.ceil(totalTiles / rows);
     
-    // Espaciado ajustado para mobile/desktop
+    // Ajustado para dar más aire
     const TILE_WIDTH = 90;
     const TILE_HEIGHT = 80;
     const X_GAP = 20;
@@ -277,7 +280,8 @@ export default function App() {
     const totalWidth = cols * (TILE_WIDTH + X_GAP);
     const totalHeight = rows * (TILE_HEIGHT + Y_GAP);
     
-    const startX = -totalWidth / 2 + TILE_WIDTH / 2;
+    // Offset un poco a la derecha para compensar el HUD izquierdo
+    const startX = -totalWidth / 2 + TILE_WIDTH / 2 + 60; 
     const startY = -totalHeight / 2 + TILE_HEIGHT / 2;
 
     for (let i = 0; i < totalTiles; i++) {
@@ -289,7 +293,6 @@ export default function App() {
         const x = startX + col * (TILE_WIDTH + X_GAP);
         const y = startY + row * (TILE_HEIGHT + Y_GAP);
         
-        // Jitter para aspecto natural de camino de piedras
         const jitterX = Math.sin(i * 0.8) * 8;
         const jitterY = Math.cos(i * 0.8) * 8;
 
@@ -335,7 +338,7 @@ export default function App() {
   };
 
   const rollDice = () => {
-    if (isRolling || currentEvent) return;
+    if (isRolling || currentEvent || tileNotification) return;
     setIsRolling(true);
     triggerFeedback('click', audioEnabled);
     let rolls = 0;
@@ -353,24 +356,39 @@ export default function App() {
     const finalRoll = Math.floor(Math.random() * 6) + 1;
     setDiceValue(finalRoll);
     setIsRolling(false);
-    const currentPlayer = players[turnIndex];
-    let newPos = currentPlayer.positionIndex + finalRoll;
-    if (newPos >= totalTiles - 1) {
-        newPos = totalTiles - 1;
-        updatePlayerPosition(newPos);
-        setView('win');
-        triggerFeedback('win', audioEnabled);
-        return;
-    }
-    updatePlayerPosition(newPos);
-    setTimeout(() => { 
-        const tile = tilesData[newPos];
-        if (tile.typeData.type !== 'META') {
-            const events = EVENTOS_DB[tile.typeData.type] || EVENTOS_DB['SUERTE'];
-            const rand = events[Math.floor(Math.random() * events.length)];
-            setCurrentEvent({ data: rand, typeData: tile.typeData });
+    
+    // Esperar un poco para que el usuario vea el número
+    setTimeout(() => {
+        const currentPlayer = players[turnIndex];
+        let newPos = currentPlayer.positionIndex + finalRoll;
+        
+        if (newPos >= totalTiles - 1) {
+            newPos = totalTiles - 1;
+            updatePlayerPosition(newPos);
+            setView('win');
+            triggerFeedback('win', audioEnabled);
+            return;
         }
-    }, 1000);
+        
+        updatePlayerPosition(newPos);
+        
+        // MOSTRAR AVISO DE TIPO DE CASILLA PRIMERO
+        setTimeout(() => { 
+            const tile = tilesData[newPos];
+            if (tile.typeData.type !== 'META') {
+                setTileNotification(tile.typeData); // Activamos el aviso
+            }
+        }, 1000);
+    }, 500);
+  };
+
+  const handleContinueToEvent = () => {
+      // Pasamos del aviso al evento real
+      if (!tileNotification) return;
+      const events = EVENTOS_DB[tileNotification.type] || EVENTOS_DB['SUERTE'];
+      const rand = events[Math.floor(Math.random() * events.length)];
+      setTileNotification(null); // Cerramos aviso
+      setCurrentEvent({ data: rand, typeData: tileNotification }); // Abrimos evento
   };
 
   const updatePlayerPosition = (newPos: number) => {
@@ -405,13 +423,20 @@ export default function App() {
     ? { x: -tilesData[activePlayer.positionIndex].x, y: -tilesData[activePlayer.positionIndex].y }
     : { x: 0, y: 0 };
 
+  const gameProgress = useMemo(() => {
+      if (!players.length) return 0;
+      const maxPos = Math.max(...players.map(p => p.positionIndex));
+      return Math.min(maxPos / totalTiles, 1);
+  }, [players, totalTiles]);
+
   const styles = `
     .transform-style-3d { transform-style: preserve-3d; }
     .backface-hidden { backface-visibility: hidden; }
-    .translate-z-12 { transform: translateZ(48px); } 
+    .translate-z-12 { transform: translateZ(32px); } 
     .scene-3d { perspective: 1000px; }
     .board-3d { transform-style: preserve-3d; transform: rotateX(40deg); transition: transform 1s cubic-bezier(0.25, 1, 0.5, 1); }
     .tile-3d { transform-style: preserve-3d; transition: all 0.3s; }
+    .tile-3d:hover { transform: translateZ(10px); }
     .player-3d { transform-style: preserve-3d; transform: rotateX(-40deg) translateY(-25px); transition: all 0.5s cubic-bezier(0.34, 1.56, 0.64, 1); } 
     @keyframes shake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-5px); } 75% { transform: translateX(5px); } }
     .animate-shake { animation: shake 0.4s ease-in-out; }
@@ -520,19 +545,39 @@ export default function App() {
         {/* FONDO MADERA */}
         <div className="absolute inset-0 opacity-40 -z-10" style={{ backgroundImage: `url("https://www.transparenttextures.com/patterns/wood-pattern.png")`, backgroundSize: '300px' }} />
 
-        {currentEvent && (
+        {/* AVISO DE TIPO DE CASILLA */}
+        {tileNotification && view === 'game' && (
+             <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/90 backdrop-blur-md animate-in zoom-in duration-300">
+                <div className="w-full max-w-sm bg-slate-900 rounded-3xl border-4 p-8 text-center shadow-2xl flex flex-col gap-6 items-center" style={{ borderColor: tileNotification.color }}>
+                    <div className="w-32 h-32 rounded-full flex items-center justify-center border-4 border-slate-900 shadow-lg" style={{ backgroundColor: tileNotification.color }}>
+                        <tileNotification.icon size={64} className="text-white animate-bounce" />
+                    </div>
+                    <div>
+                        <p className="text-slate-400 text-sm font-bold uppercase tracking-[0.2em] mb-2">CAISTE EN</p>
+                        <h3 className="text-5xl font-black uppercase italic tracking-tighter text-white" style={{ textShadow: `0 4px 0 ${tileNotification.color}` }}>{tileNotification.type}</h3>
+                    </div>
+                    <button onClick={handleContinueToEvent} className="w-full py-4 rounded-xl bg-white text-slate-900 font-black text-xl hover:scale-105 transition-transform shadow-lg">
+                        VER RETO
+                    </button>
+                </div>
+            </div>
+        )}
+
+        {/* MODAL DE EVENTO REAL */}
+        {currentEvent && view === 'game' && (
             <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/90 backdrop-blur-md animate-in zoom-in duration-300">
                 <div className="w-full max-w-lg bg-slate-900 rounded-3xl border-4 p-8 text-center shadow-2xl flex flex-col gap-6" style={{ borderColor: currentEvent.typeData.color }}>
-                    <div className="flex items-center justify-center gap-4">
-                        <div className="w-20 h-20 rounded-full flex items-center justify-center border-4 border-slate-900 shadow-lg" style={{ backgroundColor: currentEvent.typeData.color }}>
-                            <currentEvent.typeData.icon size={40} className="text-white animate-pulse" />
-                            <AlertTriangle className="absolute top-0 right-0 w-4 h-4 opacity-0" />
+                    {/* Header Evento */}
+                    <div className="flex items-center gap-4 border-b border-white/10 pb-4">
+                        <div className="w-16 h-16 rounded-full flex items-center justify-center shadow-lg" style={{ backgroundColor: currentEvent.typeData.color }}>
+                            <currentEvent.typeData.icon size={32} className="text-white" />
                         </div>
-                        <div className="text-left">
-                            <h3 className="text-4xl font-black uppercase italic">{currentEvent.typeData.type}</h3>
-                            <p className="text-slate-400 text-xs font-bold uppercase tracking-[0.2em]">{currentEvent.typeData.label}</p>
+                        <div className="text-left flex-1">
+                            <p className="text-slate-400 text-xs font-bold uppercase tracking-widest">DESAFÍO DE</p>
+                            <h3 className="text-2xl font-black uppercase italic">{currentEvent.typeData.type}</h3>
                         </div>
                     </div>
+                    
                     <div className="bg-slate-800 p-6 rounded-2xl border border-white/10">
                         <p className="text-2xl font-medium leading-relaxed">{currentEvent.data.text}</p>
                         {currentEvent.data.actionText && <div className="mt-4 inline-block bg-black/40 px-4 py-1 rounded-lg text-yellow-400 text-sm font-bold uppercase">{currentEvent.data.actionText}</div>}
@@ -551,43 +596,48 @@ export default function App() {
             </div>
         )}
 
-        {/* SIDEBAR IZQUIERDA: JUGADORES */}
-        <div className="absolute top-0 left-0 bottom-0 w-64 bg-slate-900/95 border-r border-white/10 p-6 z-40 flex flex-col gap-6 shadow-2xl">
-            <div className="flex flex-col items-center text-center pb-6 border-b border-white/10">
-                <div className="w-24 h-24 animate-bounce mb-2 filter drop-shadow-lg">{activePlayer?.character.render()}</div>
-                <p className="text-slate-400 text-xs font-bold uppercase tracking-widest">TURNO DE</p>
-                <h2 className="text-3xl font-black leading-none" style={{ color: activePlayer?.character.color }}>{activePlayer?.name}</h2>
+        {/* HUD IZQUIERDO: JUGADOR + DADO */}
+        <div className="absolute top-0 left-0 bottom-0 w-48 bg-slate-900/95 border-r border-white/10 p-4 z-40 flex flex-col gap-4 shadow-2xl justify-between">
+            {/* Info Jugador */}
+            <div className="flex flex-col items-center text-center pt-4">
+                <div className="w-16 h-16 animate-bounce mb-2 filter drop-shadow-lg">{activePlayer?.character.render()}</div>
+                <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest">TURNO DE</p>
+                <h2 className="text-2xl font-black leading-none truncate w-full" style={{ color: activePlayer?.character.color }}>{activePlayer?.name}</h2>
             </div>
             
-            <div className="flex-1 overflow-y-auto space-y-3 custom-scrollbar">
+            {/* DADO y BOTÓN (Movidi aquí) */}
+            <div className="flex flex-col items-center gap-3 my-auto">
+                <Dice3D rolling={isRolling} value={diceValue} onRoll={rollDice} />
+                <button 
+                    onClick={rollDice} 
+                    disabled={isRolling || !!currentEvent || !!tileNotification} 
+                    className={`w-full py-3 rounded-xl font-black text-sm uppercase tracking-widest shadow-lg transition-all ${isRolling ? 'bg-slate-700 text-slate-500' : 'bg-gradient-to-r from-indigo-600 to-blue-600 text-white hover:scale-105 animate-pulse'}`}
+                >
+                    {isRolling ? '...' : 'TIRAR'}
+                </button>
+            </div>
+
+            {/* Lista Pequeña */}
+            <div className="flex-1 overflow-y-auto space-y-2 custom-scrollbar max-h-40 border-t border-white/10 pt-4">
                 {players.map((p, i) => (
-                    <div key={p.id} className={`flex items-center gap-3 p-3 rounded-xl border transition-all ${i === turnIndex ? 'bg-white/10 border-white/30 scale-105' : 'bg-transparent border-transparent opacity-60'}`}>
-                        <div className="w-8 h-8">{p.character.render()}</div>
-                        <span className="font-bold text-sm truncate">{p.name}</span>
-                        {i === turnIndex && <div className="ml-auto w-2 h-2 rounded-full bg-green-400 animate-pulse" />}
+                    <div key={p.id} className={`flex items-center gap-2 p-2 rounded-lg border transition-all ${i === turnIndex ? 'bg-white/10 border-white/30' : 'bg-transparent border-transparent opacity-50'}`}>
+                        <div className="w-6 h-6">{p.character.render()}</div>
+                        <span className="font-bold text-xs truncate">{p.name}</span>
                     </div>
                 ))}
             </div>
             
-            {lastLog && <div className="text-xs text-slate-400 italic text-center border-t border-white/10 pt-4"><History size={12} className="inline mr-1" /> {lastLog}</div>}
+            {lastLog && <div className="text-[10px] text-slate-400 italic text-center pt-2 leading-tight"><History size={10} className="inline mr-1" /> {lastLog}</div>}
         </div>
 
-        {/* SIDEBAR DERECHA: ACCIONES */}
-        <div className="absolute top-0 right-0 bottom-0 w-32 bg-slate-900/95 border-l border-white/10 p-4 z-40 flex flex-col items-center justify-between shadow-2xl">
-            <button onClick={() => setAudioEnabled(!audioEnabled)} className="p-3 bg-slate-800 rounded-full hover:bg-slate-700 transition-colors">{audioEnabled ? <Volume2 size={20} className="text-green-400" /> : <VolumeX size={20} className="text-red-400" />}</button>
-            
-            {!currentEvent && (
-                <div className="flex flex-col items-center gap-2 mb-10">
-                    <Dice3D rolling={isRolling} value={diceValue} onRoll={rollDice} />
-                    <button onClick={rollDice} disabled={isRolling} className={`w-full py-2 rounded-lg font-black text-sm uppercase tracking-widest ${isRolling ? 'bg-slate-700 text-slate-500' : 'bg-indigo-600 text-white animate-pulse'}`}>{isRolling ? '...' : 'TIRAR'}</button>
-                </div>
-            )}
-            
-            <button onClick={() => setView('menu')} className="p-2 text-slate-500 hover:text-white transition-colors"><ArrowLeft size={20} /></button>
+        {/* BOTONES DERECHA SUPERIOR (CONFIG) */}
+        <div className="absolute top-4 right-4 z-40 flex gap-2">
+            <button onClick={() => setAudioEnabled(!audioEnabled)} className="p-3 bg-slate-800/90 backdrop-blur rounded-full hover:bg-slate-700 border border-white/10 shadow-lg">{audioEnabled ? <Volume2 size={20} className="text-green-400" /> : <VolumeX size={20} className="text-red-400" />}</button>
+            <button onClick={() => setView('menu')} className="p-3 bg-slate-800/90 backdrop-blur rounded-full hover:bg-slate-700 border border-white/10 shadow-lg text-slate-300"><ArrowLeft size={20} /></button>
         </div>
 
         {/* TABLERO 2D MASTER - SERPIENTE */}
-        <div className="absolute top-0 left-64 right-32 bottom-0 overflow-hidden flex items-center justify-center scene-3d">
+        <div className="absolute top-0 left-48 right-0 bottom-0 overflow-hidden flex items-center justify-center scene-3d">
             <div className="board-3d relative transition-transform duration-1000 cubic-bezier(0.25, 1, 0.5, 1)" style={{ transform: `rotateX(45deg) translate(${boardTransform.x}px, ${boardTransform.y}px)` }}>
                 {/* CAMINO DE BALDOSAS */}
                 <svg className="absolute overflow-visible opacity-50" style={{ left: 0, top: 0, zIndex: 0 }}>
@@ -631,7 +681,7 @@ export default function App() {
         </div>
 
         {view === 'win' && activePlayer && (
-            <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-md p-4 animate-in zoom-in">
+            <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-sm p-4 animate-in zoom-in">
                 <div className="bg-yellow-400 text-black p-8 rounded-3xl shadow-2xl text-center border-4 border-black max-w-sm w-full">
                     {!winnerPhoto ? (
                         <div className="mb-6"><WinnerCamera onCapture={setWinnerPhoto} audioEnabled={audioEnabled} /><p className="text-xs font-bold uppercase tracking-widest mt-2 animate-pulse">¡FOTO!</p></div>
