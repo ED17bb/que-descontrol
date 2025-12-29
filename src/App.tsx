@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect, useRef } from 'react';
 import type { ReactNode } from 'react';
-import { UserPlus, Play, RotateCcw, Skull, HelpCircle, Swords, PartyPopper, Zap, AlertTriangle, Volume2, VolumeX, Crown, History, Camera, Trash2, ArrowLeft, Users, Smartphone, Image as ImageIcon, Upload, Dice5, Trophy } from 'lucide-react';
+import { UserPlus, Play, RotateCcw, Skull, HelpCircle, Swords, PartyPopper, Zap, AlertTriangle, Volume2, VolumeX, Crown, History, Camera, Trash2, ArrowLeft, Users, Smartphone, Image as ImageIcon, Upload, Trophy } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
 // --- TIPOS ---
@@ -47,21 +47,138 @@ interface CurrentEvent {
   typeData: TileType;
 }
 
-// --- AVATARES ---
+// --- AVATARES PREMIUM ---
 const CHARACTERS: Character[] = [
-  { id: 'link', name: 'Héroe', color: '#10b981', render: () => <svg viewBox="0 0 100 100" className="w-full h-full drop-shadow-md"><circle cx="50" cy="50" r="45" fill="#a7f3d0"/><path d="M20,40 L50,5 L80,40 L80,50 L20,50 Z" fill="#047857"/><path d="M50,5 L80,40 L20,40 Z" fill="#10b981"/><rect x="25" y="40" width="10" height="40" fill="#fcd34d"/><rect x="65" y="40" width="10" height="40" fill="#fcd34d"/><path d="M35,50 Q50,80 65,50" fill="none" stroke="#065f46" strokeWidth="3"/></svg> },
-  { id: 'titan', name: 'Colosal', color: '#ef4444', render: () => <svg viewBox="0 0 100 100" className="w-full h-full drop-shadow-md"><rect x="15" y="10" width="70" height="80" rx="15" fill="#7f1d1d"/><path d="M15,30 L85,30" stroke="#fecaca" strokeWidth="4"/><path d="M15,50 L85,50" stroke="#fecaca" strokeWidth="4"/><path d="M15,70 L85,70" stroke="#fecaca" strokeWidth="4"/><rect x="25" y="35" width="20" height="15" fill="white"/><rect x="55" y="35" width="20" height="15" fill="white"/><rect x="30" y="75" width="40" height="10" fill="#fff"/><path d="M30,75 L30,85 M40,75 L40,85 M50,75 L50,85 M60,75 L60,85 M70,75 L70,85" stroke="#7f1d1d" strokeWidth="2"/></svg> },
-  { id: 'trump', name: 'Presi', color: '#3b82f6', render: () => <svg viewBox="0 0 100 100" className="w-full h-full drop-shadow-md"><circle cx="50" cy="50" r="40" fill="#fdba74"/><path d="M10,40 Q30,10 50,30 T90,20" fill="#fcd34d" stroke="#f59e0b" strokeWidth="4" strokeLinecap="round"/><rect x="30" y="80" width="40" height="20" fill="#1e3a8a"/><path d="M45,80 L55,80 L50,100 Z" fill="#ef4444"/></svg> },
-  { id: 'peach', name: 'Reina', color: '#ec4899', render: () => <svg viewBox="0 0 100 100" className="w-full h-full drop-shadow-md"><circle cx="50" cy="55" r="35" fill="#fbcfe8"/><path d="M25,25 L35,45 L50,15 L65,45 L75,25 L65,55 L35,55 Z" fill="#fbbf24" stroke="#d97706" strokeWidth="2"/><circle cx="50" cy="55" r="5" fill="#3b82f6"/><circle cx="25" cy="55" r="10" fill="#fcd34d"/><circle cx="75" cy="55" r="10" fill="#fcd34d"/></svg> },
-  { id: 'monk', name: 'Zen', color: '#f97316', render: () => <svg viewBox="0 0 100 100" className="w-full h-full drop-shadow-md"><circle cx="50" cy="45" r="30" fill="#fdba74"/><circle cx="50" cy="35" r="3" fill="#dc2626"/><path d="M10,80 Q50,110 90,80" fill="#ea580c"/><path d="M10,80 L90,80" stroke="#f97316" strokeWidth="5"/><path d="M30,80 L50,100 L70,80" fill="#fb923c"/></svg> },
-  { id: 'japan', name: 'Nipón', color: '#ffffff', render: () => <svg viewBox="0 0 100 100" className="w-full h-full drop-shadow-md"><circle cx="50" cy="50" r="40" fill="white" stroke="#e5e5e5" strokeWidth="2"/><rect x="20" y="30" width="60" height="15" fill="white" stroke="#ef4444" strokeWidth="2"/><circle cx="50" cy="37" r="5" fill="#ef4444"/><path d="M30,60 L40,65 L50,60 L60,65 L70,60" fill="none" stroke="#000" strokeWidth="2"/></svg> },
-  { id: 'lara', name: 'Exploradora', color: '#a855f7', render: () => <svg viewBox="0 0 100 100" className="w-full h-full drop-shadow-md"><circle cx="50" cy="50" r="35" fill="#d4a373"/><rect x="25" y="45" width="50" height="12" fill="#1e293b" rx="2"/><circle cx="35" cy="51" r="4" fill="#38bdf8" opacity="0.5"/><circle cx="65" cy="51" r="4" fill="#38bdf8" opacity="0.5"/><rect x="42" y="10" width="16" height="90" fill="#503830" rx="8"/><rect x="20" y="80" width="60" height="20" fill="#06b6d4"/></svg> },
-  { id: 'goku', name: 'Saiyan', color: '#f59e0b', render: () => <svg viewBox="0 0 100 100" className="w-full h-full drop-shadow-md"><path d="M20,50 L10,20 L30,35 L50,5 L70,35 L90,20 L80,50 Z" fill="#000"/><circle cx="50" cy="60" r="28" fill="#fdba74"/><path d="M35,65 L45,70 L35,70 Z" fill="#000"/><path d="M65,65 L55,70 L65,70 Z" fill="#000"/><rect x="20" y="85" width="60" height="15" fill="#f97316"/><rect x="40" y="85" width="20" height="15" fill="#1e40af"/></svg> },
-  { id: 'buu', name: 'Gordito', color: '#f472b6', render: () => <svg viewBox="0 0 100 100" className="w-full h-full drop-shadow-md"><circle cx="50" cy="60" r="35" fill="#f9a8d4"/><path d="M50,25 Q80,5 90,30" fill="none" stroke="#f9a8d4" strokeWidth="14" strokeLinecap="round"/><rect x="30" y="80" width="40" height="20" fill="#1f2937"/><circle cx="50" cy="85" r="5" fill="#fcd34d"/><path d="M35,55 Q50,65 65,55" fill="none" stroke="#000" strokeWidth="2"/></svg> },
-  { id: 'panda', name: 'Panda', color: '#1f2937', render: () => <svg viewBox="0 0 100 100" className="w-full h-full drop-shadow-md"><circle cx="50" cy="50" r="40" fill="white" stroke="#000" strokeWidth="2"/><circle cx="25" cy="25" r="12" fill="black"/><circle cx="75" cy="25" r="12" fill="black"/><ellipse cx="35" cy="45" rx="10" ry="8" fill="black" transform="rotate(-20 35 45)"/><ellipse cx="65" cy="45" rx="10" ry="8" fill="black" transform="rotate(20 65 45)"/><circle cx="37" cy="43" r="3" fill="white"/><circle cx="63" cy="43" r="3" fill="white"/><ellipse cx="50" cy="60" rx="6" ry="4" fill="black"/></svg> }
+  { 
+    id: 'link', name: 'Héroe', color: '#10b981', 
+    render: () => (
+      <svg viewBox="0 0 100 100" className="w-full h-full drop-shadow-md">
+        <circle cx="50" cy="50" r="45" fill="#a7f3d0" />
+        <path d="M20,40 L50,5 L80,40 L80,50 L20,50 Z" fill="#047857" /> 
+        <path d="M50,5 L80,40 L20,40 Z" fill="#10b981" />
+        <rect x="25" y="40" width="10" height="40" fill="#fcd34d" /> 
+        <rect x="65" y="40" width="10" height="40" fill="#fcd34d" />
+        <path d="M35,50 Q50,80 65,50" fill="none" stroke="#065f46" strokeWidth="3" /> 
+      </svg>
+    )
+  },
+  { 
+    id: 'titan', name: 'Colosal', color: '#ef4444', 
+    render: () => (
+      <svg viewBox="0 0 100 100" className="w-full h-full drop-shadow-md">
+        <rect x="15" y="10" width="70" height="80" rx="15" fill="#7f1d1d" /> 
+        <path d="M15,30 L85,30" stroke="#fecaca" strokeWidth="4" /> 
+        <path d="M15,50 L85,50" stroke="#fecaca" strokeWidth="4" />
+        <path d="M15,70 L85,70" stroke="#fecaca" strokeWidth="4" />
+        <rect x="25" y="35" width="20" height="15" fill="white" /> 
+        <rect x="55" y="35" width="20" height="15" fill="white" />
+        <rect x="30" y="75" width="40" height="10" fill="#fff" /> 
+        <path d="M30,75 L30,85 M40,75 L40,85 M50,75 L50,85 M60,75 L60,85 M70,75 L70,85" stroke="#7f1d1d" strokeWidth="2" />
+      </svg>
+    )
+  },
+  { 
+    id: 'trump', name: 'Presi', color: '#3b82f6', 
+    render: () => (
+      <svg viewBox="0 0 100 100" className="w-full h-full drop-shadow-md">
+        <circle cx="50" cy="50" r="40" fill="#fdba74" /> 
+        <path d="M10,40 Q30,10 50,30 T90,20" fill="#fcd34d" stroke="#f59e0b" strokeWidth="4" strokeLinecap="round" /> 
+        <rect x="30" y="80" width="40" height="20" fill="#1e3a8a" /> 
+        <path d="M45,80 L55,80 L50,100 Z" fill="#ef4444" /> 
+      </svg>
+    )
+  },
+  { 
+    id: 'peach', name: 'Reina', color: '#ec4899', 
+    render: () => (
+      <svg viewBox="0 0 100 100" className="w-full h-full drop-shadow-md">
+        <circle cx="50" cy="55" r="35" fill="#fbcfe8" />
+        <path d="M25,25 L35,45 L50,15 L65,45 L75,25 L65,55 L35,55 Z" fill="#fbbf24" stroke="#d97706" strokeWidth="2" /> 
+        <circle cx="50" cy="55" r="5" fill="#3b82f6" /> 
+        <circle cx="25" cy="55" r="10" fill="#fcd34d" /> 
+        <circle cx="75" cy="55" r="10" fill="#fcd34d" />
+      </svg>
+    )
+  },
+  { 
+    id: 'monk', name: 'Zen', color: '#f97316', 
+    render: () => (
+      <svg viewBox="0 0 100 100" className="w-full h-full drop-shadow-md">
+        <circle cx="50" cy="45" r="30" fill="#fdba74" /> 
+        <circle cx="50" cy="35" r="3" fill="#dc2626" /> 
+        <path d="M10,80 Q50,110 90,80" fill="#ea580c" /> 
+        <path d="M10,80 L90,80" stroke="#f97316" strokeWidth="5" />
+        <path d="M30,80 L50,100 L70,80" fill="#fb923c" /> 
+      </svg>
+    )
+  },
+  { 
+    id: 'japan', name: 'Nipón', color: '#ffffff', 
+    render: () => (
+      <svg viewBox="0 0 100 100" className="w-full h-full drop-shadow-md">
+        <circle cx="50" cy="50" r="40" fill="white" stroke="#e5e5e5" strokeWidth="2" />
+        <rect x="20" y="30" width="60" height="15" fill="white" stroke="#ef4444" strokeWidth="2" /> 
+        <circle cx="50" cy="37" r="5" fill="#ef4444" /> 
+        <path d="M30,60 L40,65 L50,60 L60,65 L70,60" fill="none" stroke="#000" strokeWidth="2" /> 
+      </svg>
+    )
+  },
+  { 
+    id: 'lara', name: 'Exploradora', color: '#a855f7', 
+    render: () => (
+      <svg viewBox="0 0 100 100" className="w-full h-full drop-shadow-md">
+        <circle cx="50" cy="50" r="35" fill="#d4a373" />
+        <rect x="25" y="45" width="50" height="12" fill="#1e293b" rx="2" /> 
+        <circle cx="35" cy="51" r="4" fill="#38bdf8" opacity="0.5" />
+        <circle cx="65" cy="51" r="4" fill="#38bdf8" opacity="0.5" />
+        <rect x="42" y="10" width="16" height="90" fill="#503830" rx="8" /> 
+        <rect x="20" y="80" width="60" height="20" fill="#06b6d4" /> 
+      </svg>
+    )
+  },
+  { 
+    id: 'goku', name: 'Saiyan', color: '#f59e0b', 
+    render: () => (
+      <svg viewBox="0 0 100 100" className="w-full h-full drop-shadow-md">
+        <path d="M20,50 L10,20 L30,35 L50,5 L70,35 L90,20 L80,50 Z" fill="#000" /> 
+        <circle cx="50" cy="60" r="28" fill="#fdba74" />
+        <path d="M35,65 L45,70 L35,70 Z" fill="#000" /> 
+        <path d="M65,65 L55,70 L65,70 Z" fill="#000" />
+        <rect x="20" y="85" width="60" height="15" fill="#f97316" /> 
+        <rect x="40" y="85" width="20" height="15" fill="#1e40af" /> 
+      </svg>
+    )
+  },
+  { 
+    id: 'buu', name: 'Gordito', color: '#f472b6', 
+    render: () => (
+      <svg viewBox="0 0 100 100" className="w-full h-full drop-shadow-md">
+        <circle cx="50" cy="60" r="35" fill="#f9a8d4" /> 
+        <path d="M50,25 Q80,5 90,30" fill="none" stroke="#f9a8d4" strokeWidth="14" strokeLinecap="round" /> 
+        <rect x="30" y="80" width="40" height="20" fill="#1f2937" /> 
+        <circle cx="50" cy="85" r="5" fill="#fcd34d" /> 
+        <path d="M35,55 Q50,65 65,55" fill="none" stroke="#000" strokeWidth="2" /> 
+      </svg>
+    )
+  },
+  { 
+    id: 'panda', name: 'Panda', color: '#1f2937', 
+    render: () => (
+      <svg viewBox="0 0 100 100" className="w-full h-full drop-shadow-md">
+        <circle cx="50" cy="50" r="40" fill="white" stroke="#000" strokeWidth="2" />
+        <circle cx="25" cy="25" r="12" fill="black" /> 
+        <circle cx="75" cy="25" r="12" fill="black" />
+        <ellipse cx="35" cy="45" rx="10" ry="8" fill="black" transform="rotate(-20 35 45)" /> 
+        <ellipse cx="65" cy="45" rx="10" ry="8" fill="black" transform="rotate(20 65 45)" />
+        <circle cx="37" cy="43" r="3" fill="white" />
+        <circle cx="63" cy="43" r="3" fill="white" />
+        <ellipse cx="50" cy="60" rx="6" ry="4" fill="black" /> 
+      </svg>
+    )
+  }
 ];
 
-// --- AUDIO ---
+// --- UTILIDAD DE AUDIO ---
 const triggerFeedback = (type: string, audioEnabled = true) => {
   if (!audioEnabled) return;
   if (typeof navigator !== 'undefined' && navigator.vibrate) {
@@ -93,6 +210,14 @@ const triggerFeedback = (type: string, audioEnabled = true) => {
       gain.gain.linearRampToValueAtTime(0, now + 0.3);
       osc.start(now);
       osc.stop(now + 0.3);
+    } else if (type === 'win') {
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(400, now);
+      osc.frequency.linearRampToValueAtTime(800, now + 0.2);
+      gain.gain.setValueAtTime(0.1, now);
+      gain.gain.linearRampToValueAtTime(0, now + 0.5);
+      osc.start(now);
+      osc.stop(now + 0.5);
     }
   } catch (e) {}
 };
@@ -147,9 +272,30 @@ const EVENTOS_DB: Record<string, GameEventData[]> = {
 
 const Confetti = () => {
   const particles = useMemo(() => [...Array(50)].map((_, i) => ({
-    id: i, left: Math.random() * 100, animDuration: 2 + Math.random() * 3, bg: ['#FFD700', '#FF6347', '#32CD32', '#1E90FF'][Math.floor(Math.random() * 4)], delay: Math.random() * 2
+    id: i,
+    left: Math.random() * 100,
+    animDuration: 2 + Math.random() * 3,
+    bg: ['#FFD700', '#FF6347', '#32CD32', '#1E90FF'][Math.floor(Math.random() * 4)],
+    delay: Math.random() * 2
   })), []);
-  return <div className="fixed inset-0 pointer-events-none z-50 overflow-hidden">{particles.map(p => <div key={p.id} className="absolute top-[-20px] w-3 h-3 rounded-sm animate-fall" style={{ left: `${p.left}%`, backgroundColor: p.bg, animation: `fall ${p.animDuration}s linear infinite`, animationDelay: `${p.delay}s` }} />)}<style>{`@keyframes fall { to { transform: translateY(100vh) rotate(720deg); } }`}</style></div>;
+
+  return (
+    <div className="fixed inset-0 pointer-events-none z-50 overflow-hidden">
+      {particles.map(p => (
+        <div
+          key={p.id}
+          className="absolute top-[-20px] w-3 h-3 rounded-sm animate-fall"
+          style={{
+            left: `${p.left}%`,
+            backgroundColor: p.bg,
+            animation: `fall ${p.animDuration}s linear infinite`,
+            animationDelay: `${p.delay}s`
+          }}
+        />
+      ))}
+      <style>{`@keyframes fall { to { transform: translateY(100vh) rotate(720deg); } }`}</style>
+    </div>
+  );
 };
 
 const WinnerCamera = ({ onCapture, audioEnabled }: { onCapture: (data: string) => void, audioEnabled: boolean }) => {
@@ -159,12 +305,26 @@ const WinnerCamera = ({ onCapture, audioEnabled }: { onCapture: (data: string) =
 
     useEffect(() => {
         let stream: MediaStream | null = null;
+        
         const startCamera = async () => {
-            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { setError("Cámara no soportada."); return; }
-            try { stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } }); if (videoRef.current) videoRef.current.srcObject = stream; } catch (err) { setError("Permiso denegado."); }
+            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                setError("Cámara no soportada.");
+                return;
+            }
+            try {
+                stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
+                if (videoRef.current) {
+                    videoRef.current.srcObject = stream;
+                }
+            } catch (err) {
+                setError("Permiso denegado.");
+            }
         };
         startCamera();
-        return () => { if (stream) stream.getTracks().forEach(t => t.stop()); };
+
+        return () => {
+            if (stream) stream.getTracks().forEach(t => t.stop());
+        };
     }, []);
 
     const takePhoto = () => {
@@ -175,36 +335,61 @@ const WinnerCamera = ({ onCapture, audioEnabled }: { onCapture: (data: string) =
             canvasRef.current.width = videoWidth;
             canvasRef.current.height = videoHeight;
             context.drawImage(videoRef.current, 0, 0, videoWidth, videoHeight);
-            try { const dataUrl = canvasRef.current.toDataURL('image/png'); triggerFeedback('click', audioEnabled); onCapture(dataUrl); } catch (e) { setError("Error al capturar"); }
+            
+            try {
+                const dataUrl = canvasRef.current.toDataURL('image/png');
+                triggerFeedback('click', audioEnabled);
+                onCapture(dataUrl);
+            } catch (e) {
+                setError("Error al capturar");
+            }
         }
     };
 
     if (error) return <div className="text-red-400 p-4 border border-red-500 rounded bg-red-900/20">{error}</div>;
+
     return (
         <div className="relative w-full max-w-xs mx-auto rounded-2xl overflow-hidden border-4 border-yellow-400 shadow-2xl mb-4 bg-black">
             <video ref={videoRef} autoPlay playsInline muted className="w-full h-48 object-cover" />
             <canvas ref={canvasRef} className="hidden" />
-            <div className="absolute bottom-4 left-0 right-0 flex justify-center"><button onClick={takePhoto} className="bg-white text-black p-3 rounded-full shadow-lg hover:scale-110 transition-transform"><Camera size={24} /></button></div>
+            <div className="absolute bottom-4 left-0 right-0 flex justify-center">
+                <button onClick={takePhoto} className="bg-white text-black p-3 rounded-full shadow-lg hover:scale-110 transition-transform">
+                    <Camera size={24} />
+                </button>
+            </div>
         </div>
     );
 };
 
 const Dice3D = ({ rolling, value, onRoll }: { rolling: boolean; value: number; onRoll: () => void }) => {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const faces: any = { 1: 'rotateX(0deg) rotateY(0deg)', 2: 'rotateX(-90deg) rotateY(0deg)', 3: 'rotateX(0deg) rotateY(-90deg)', 4: 'rotateX(0deg) rotateY(90deg)', 5: 'rotateX(90deg) rotateY(0deg)', 6: 'rotateX(180deg) rotateY(0deg)' };
+  const faces: any = {
+    1: 'rotateX(0deg) rotateY(0deg)',
+    2: 'rotateX(-90deg) rotateY(0deg)',
+    3: 'rotateX(0deg) rotateY(-90deg)',
+    4: 'rotateX(0deg) rotateY(90deg)',
+    5: 'rotateX(90deg) rotateY(0deg)',
+    6: 'rotateX(180deg) rotateY(0deg)',
+  };
+
   return (
-    <div className="relative w-20 h-20 perspective-1000 group cursor-pointer" onClick={onRoll}>
-        <div className="w-full h-full relative transform-style-3d transition-transform duration-[800ms] ease-out" style={{ transform: rolling ? `rotateX(${Math.random() * 1000}deg) rotateY(${Math.random() * 1000}deg)` : (faces[value] || faces[1]) }}>
+    <div className="relative w-24 h-24 perspective-1000 group cursor-pointer" onClick={onRoll}>
+        <div 
+            className="w-full h-full relative transform-style-3d transition-transform duration-[800ms] ease-out"
+            style={{ transform: rolling ? `rotateX(${Math.random() * 1000}deg) rotateY(${Math.random() * 1000}deg)` : (faces[value] || faces[1]) }}
+        >
             {[
-              { id: 1, rot: 'translateZ(40px)', dots: [4] },
-              { id: 6, rot: 'rotateY(180deg) translateZ(40px)', dots: [0,2,3,5,6,8] },
-              { id: 2, rot: 'rotateX(90deg) translateZ(40px)', dots: [0,8] },
-              { id: 5, rot: 'rotateX(-90deg) translateZ(40px)', dots: [0,2,4,6,8] },
-              { id: 3, rot: 'rotateY(-90deg) translateZ(40px)', dots: [0,4,8] },
-              { id: 4, rot: 'rotateY(90deg) translateZ(40px)', dots: [0,2,6,8] }
+              { id: 1, rot: 'translateZ(48px)', dots: [4] },
+              { id: 6, rot: 'rotateY(180deg) translateZ(48px)', dots: [0,2,3,5,6,8] },
+              { id: 2, rot: 'rotateX(90deg) translateZ(48px)', dots: [0,8] },
+              { id: 5, rot: 'rotateX(-90deg) translateZ(48px)', dots: [0,2,4,6,8] },
+              { id: 3, rot: 'rotateY(-90deg) translateZ(48px)', dots: [0,4,8] },
+              { id: 4, rot: 'rotateY(90deg) translateZ(48px)', dots: [0,2,6,8] }
             ].map(face => (
-               <div key={face.id} className="absolute w-20 h-20 bg-white border-2 border-slate-300 rounded-xl grid grid-cols-3 grid-rows-3 p-2 gap-1 backface-hidden" style={{ transform: face.rot }}>
-                  {[...Array(9)].map((_, i) => <div key={i} className={`rounded-full transition-all ${face.dots.includes(i) ? 'bg-black shadow-inner scale-100' : 'bg-transparent scale-0'}`} />)}
+               <div key={face.id} className="absolute w-24 h-24 bg-white border-2 border-slate-300 rounded-2xl grid grid-cols-3 grid-rows-3 p-3 gap-1 backface-hidden" style={{ transform: face.rot }}>
+                  {[...Array(9)].map((_, i) => (
+                    <div key={i} className={`rounded-full transition-all ${face.dots.includes(i) ? 'bg-black shadow-inner scale-100' : 'bg-transparent scale-0'}`} />
+                  ))}
                </div>
             ))}
         </div>
@@ -453,9 +638,19 @@ export default function App() {
             <h1 className="text-7xl font-black text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 to-red-600 mb-2 drop-shadow-lg tracking-tighter">QUE DESCONTROL</h1>
             <p className="text-slate-400 text-xl tracking-[0.5em] mb-8 uppercase">Party Edition</p>
 
+            <div className="flex gap-4 justify-center mb-6">
+                <button onClick={() => setTotalTiles(25)} className={`px-6 py-3 rounded-xl font-bold transition-all ${totalTiles === 25 ? 'bg-blue-600 text-white shadow-lg scale-105' : 'bg-slate-800 text-slate-400'}`}>RÁPIDO (25)</button>
+                <button onClick={() => setTotalTiles(50)} className={`px-6 py-3 rounded-xl font-bold transition-all ${totalTiles === 50 ? 'bg-purple-600 text-white shadow-lg scale-105' : 'bg-slate-800 text-slate-400'}`}>NORMAL (50)</button>
+            </div>
+
             {/* SELECCIÓN DE IMAGEN DE FONDO */}
             <div className="mb-6 relative group">
-                <input type="file" accept="image/*" onChange={handleImageUpload} className="absolute inset-0 opacity-0 cursor-pointer z-10"/>
+                <input 
+                    type="file" 
+                    accept="image/*" 
+                    onChange={handleImageUpload} 
+                    className="absolute inset-0 opacity-0 cursor-pointer z-10"
+                />
                 <button className={`w-full py-4 rounded-xl border-2 border-dashed flex items-center justify-center gap-2 font-bold transition-all ${boardImage ? 'border-green-500 text-green-400 bg-green-900/20' : 'border-slate-600 text-slate-400 group-hover:border-white group-hover:text-white'}`}>
                     {boardImage ? <><ImageIcon size={20} /> Tablero Cargado</> : <><Upload size={20} /> Cargar Imagen de Tablero</>}
                 </button>
