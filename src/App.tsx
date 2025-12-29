@@ -180,27 +180,21 @@ const CHARACTERS: Character[] = [
 // --- UTILIDAD DE AUDIO ---
 const triggerFeedback = (type: string, audioEnabled = true) => {
   if (!audioEnabled) return;
-  
   if (typeof navigator !== 'undefined' && navigator.vibrate) {
     if (type === 'click') navigator.vibrate(10);
     else if (type === 'bad') navigator.vibrate([50, 50, 50]);
     else if (type === 'win') navigator.vibrate([100, 50, 100]);
   }
-
   try {
     const Win = window as any;
     const AudioContext = Win.AudioContext || Win.webkitAudioContext;
     if (!AudioContext) return;
-    
     const ctx = new AudioContext();
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
-    
     osc.connect(gain);
     gain.connect(ctx.destination);
-    
     const now = ctx.currentTime;
-    
     if (type === 'click') {
       osc.frequency.setValueAtTime(600, now);
       osc.frequency.exponentialRampToValueAtTime(300, now + 0.1);
@@ -215,18 +209,8 @@ const triggerFeedback = (type: string, audioEnabled = true) => {
       gain.gain.linearRampToValueAtTime(0, now + 0.3);
       osc.start(now);
       osc.stop(now + 0.3);
-    } else if (type === 'win') {
-      osc.type = 'triangle';
-      osc.frequency.setValueAtTime(400, now);
-      osc.frequency.linearRampToValueAtTime(800, now + 0.2);
-      gain.gain.setValueAtTime(0.1, now);
-      gain.gain.linearRampToValueAtTime(0, now + 0.5);
-      osc.start(now);
-      osc.stop(now + 0.5);
     }
-  } catch (e) {
-    // Silently fail
-  }
+  } catch (e) {}
 };
 
 const TIPOS_CASILLA: TileType[] = [
@@ -312,7 +296,6 @@ const WinnerCamera = ({ onCapture, audioEnabled }: { onCapture: (data: string) =
 
     useEffect(() => {
         let stream: MediaStream | null = null;
-        
         const startCamera = async () => {
             if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
                 setError("Cámara no soportada.");
@@ -320,18 +303,11 @@ const WinnerCamera = ({ onCapture, audioEnabled }: { onCapture: (data: string) =
             }
             try {
                 stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
-                if (videoRef.current) {
-                    videoRef.current.srcObject = stream;
-                }
-            } catch (err) {
-                setError("Permiso denegado.");
-            }
+                if (videoRef.current) videoRef.current.srcObject = stream;
+            } catch (err) { setError("Permiso denegado."); }
         };
         startCamera();
-
-        return () => {
-            if (stream) stream.getTracks().forEach(t => t.stop());
-        };
+        return () => { if (stream) stream.getTracks().forEach(t => t.stop()); };
     }, []);
 
     const takePhoto = () => {
@@ -342,14 +318,11 @@ const WinnerCamera = ({ onCapture, audioEnabled }: { onCapture: (data: string) =
             canvasRef.current.width = videoWidth;
             canvasRef.current.height = videoHeight;
             context.drawImage(videoRef.current, 0, 0, videoWidth, videoHeight);
-            
             try {
                 const dataUrl = canvasRef.current.toDataURL('image/png');
                 triggerFeedback('click', audioEnabled);
                 onCapture(dataUrl);
-            } catch (e) {
-                setError("Error al capturar");
-            }
+            } catch (e) { setError("Error al capturar"); }
         }
     };
 
@@ -421,7 +394,6 @@ export default function App() {
   const [totalTiles, setTotalTiles] = useState(50);
   const [isPortrait, setIsPortrait] = useState(false);
 
-  // Detectar orientación
   useEffect(() => {
     const checkOrientation = () => setIsPortrait(window.innerHeight > window.innerWidth);
     checkOrientation();
@@ -429,7 +401,6 @@ export default function App() {
     return () => window.removeEventListener('resize', checkOrientation);
   }, []);
 
-  // Carga inicial
   useEffect(() => {
     if (typeof window !== 'undefined') {
         const saved = localStorage.getItem('que-descontrol-state');
@@ -451,35 +422,31 @@ export default function App() {
     }
   }, []);
 
-  // Auto-guardado
   useEffect(() => {
     if (players.length > 0 && view === 'game') {
         localStorage.setItem('que-descontrol-state', JSON.stringify({ players, turnIndex, gameState: 'playing', totalTiles, lastLog }));
     }
   }, [players, turnIndex, view, totalTiles, lastLog]);
 
-  // Lógica de tablero
+  // TABLERO ISOMÉTRICO 3D (Estilo Concepto Visual)
   const tilesData = useMemo(() => {
     const tiles: TileData[] = [];
     let angle = 0;
     
-    // Ajustes para modo apaisado (elipses en lugar de círculos)
-    const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
-    const xRadiusBase = isMobile ? 120 : 250; 
-    const yRadiusBase = isMobile ? 120 : 140; // Menor altura en desktop para que quepa en pantalla
+    // Configuración para espiral isométrica
+    let maxRadius = 350; // Más espacio para vista 3D
+    let minRadius = 40;
     
-    const xRadiusEnd = 20;
-    const yRadiusEnd = 20;
+    if (totalTiles <= 25) maxRadius = 250;
 
     const angleIncrement = 0.45;
 
     for (let i = 0; i < totalTiles; i++) {
       const t = i / (totalTiles - 1);
-      const currentXRadius = xRadiusBase - (xRadiusBase - xRadiusEnd) * t;
-      const currentYRadius = yRadiusBase - (yRadiusBase - yRadiusEnd) * t;
+      const currentRadius = maxRadius - (maxRadius - minRadius) * t;
 
-      const x = Math.cos(angle) * currentXRadius;
-      const y = Math.sin(angle) * currentYRadius;
+      const x = Math.cos(angle) * currentRadius;
+      const y = Math.sin(angle) * currentRadius;
       
       const typeData = TIPOS_CASILLA[i % TIPOS_CASILLA.length];
       
@@ -493,12 +460,10 @@ export default function App() {
     return tiles;
   }, [totalTiles]);
 
-  // Lógica de juego
   const handleAddPlayer = () => {
     if (!newPlayerName.trim() || !selectedCharId) return;
     const char = CHARACTERS.find(c => c.id === selectedCharId);
     if (!char) return;
-    
     setPlayers([...players, { id: Date.now(), name: newPlayerName, positionIndex: 0, character: char }]);
     setNewPlayerName('');
     setSelectedCharId(null);
@@ -527,7 +492,6 @@ export default function App() {
     if (isRolling || currentEvent) return;
     setIsRolling(true);
     triggerFeedback('click', audioEnabled);
-    
     let rolls = 0;
     const interval = setInterval(() => {
         rolls++;
@@ -543,7 +507,6 @@ export default function App() {
     const finalRoll = Math.floor(Math.random() * 6) + 1;
     setDiceValue(finalRoll);
     setIsRolling(false);
-    
     const currentPlayer = players[turnIndex];
     let newPos = currentPlayer.positionIndex + finalRoll;
     if (newPos >= totalTiles - 1) {
@@ -576,14 +539,12 @@ export default function App() {
   const handleEventDecision = (applyConsequence: boolean) => {
       if (!currentEvent) return;
       const { data } = currentEvent;
-      
       if (applyConsequence && (data.penalty || data.bonus)) {
           const moveAmount = (data.bonus || 0) + (data.penalty || 0);
           const currentPlayer = players[turnIndex];
           let newPos = currentPlayer.positionIndex + moveAmount;
           if (newPos < 0) newPos = 0;
           if (newPos >= totalTiles - 1) newPos = totalTiles - 1;
-
           setScreenFlash(moveAmount > 0 ? 'bg-green-500/30' : 'bg-red-500/30 animate-shake');
           triggerFeedback(moveAmount > 0 ? 'win' : 'bad', audioEnabled);
           setTimeout(() => setScreenFlash(null), 600);
@@ -593,9 +554,7 @@ export default function App() {
       setTimeout(() => setTurnIndex((prev) => (prev + 1) % players.length), 1000);
   };
 
-  // Render variables
   const activePlayer = players[turnIndex] || players[0];
-  // Valor por defecto seguro para evitar pantalla negra
   const boardTransform = tilesData[activePlayer?.positionIndex] 
     ? { x: -tilesData[activePlayer.positionIndex].x, y: -tilesData[activePlayer.positionIndex].y }
     : { x: 0, y: 0 };
@@ -606,29 +565,32 @@ export default function App() {
       return Math.min(maxPos / totalTiles, 1);
   }, [players, totalTiles]);
 
+  // CSS 3D Mejorado
   const styles = `
     .transform-style-3d { transform-style: preserve-3d; }
     .backface-hidden { backface-visibility: hidden; }
     .translate-z-12 { transform: translateZ(48px); } 
+    .scene-3d { perspective: 1200px; }
+    .board-3d { transform-style: preserve-3d; transform: rotateX(55deg) rotateZ(-45deg); }
+    .tile-3d { transform-style: preserve-3d; transition: all 0.5s; }
+    .tile-3d:hover { transform: translateZ(10px); }
+    .player-3d { transform-style: preserve-3d; transform: rotateX(-55deg) rotateY(45deg) translateY(-20px); } /* Contrarrestar rotación para que se vean de pie */
+    
     @keyframes shake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-5px); } 75% { transform: translateX(5px); } }
     .animate-shake { animation: shake 0.4s ease-in-out; }
   `;
 
-  // --- VISTAS ---
-
-  // PANTALLA "GIRA TU MÓVIL"
   if (isPortrait) {
     return (
       <div className="h-screen bg-black text-white flex flex-col items-center justify-center p-8 text-center animate-in fade-in">
         <Smartphone className="w-24 h-24 mb-6 animate-spin-slow text-yellow-400" />
         <h1 className="text-3xl font-black mb-4">¡GIRA TU MÓVIL!</h1>
-        <p className="text-slate-400 text-lg">Este juego de mesa se disfruta mejor en horizontal, como un tablero real.</p>
+        <p className="text-slate-400 text-lg">Para la mejor experiencia 3D, juega en horizontal.</p>
         <style>{`.animate-spin-slow { animation: spin 3s linear infinite; } @keyframes spin { 0% { transform: rotate(0deg); } 25% { transform: rotate(90deg); } 100% { transform: rotate(90deg); } }`}</style>
       </div>
     );
   }
 
-  // MENÚ
   if (view === 'menu') {
     return (
       <div className="h-screen bg-slate-900 text-white flex items-center justify-center p-6 relative overflow-hidden">
@@ -663,7 +625,6 @@ export default function App() {
     );
   }
 
-  // AGREGAR JUGADORES
   if (view === 'add-players') {
     return (
       <div className="h-screen bg-slate-900 text-white p-8 relative flex gap-8 items-start justify-center">
@@ -684,11 +645,7 @@ export default function App() {
                     );
                 })}
             </div>
-            <button 
-                onClick={handleAddPlayer} 
-                disabled={!newPlayerName || !selectedCharId} 
-                className={`w-full py-4 rounded-xl font-bold text-lg transition-all flex items-center justify-center gap-2 ${(!newPlayerName || !selectedCharId) ? 'bg-slate-700 text-slate-500' : 'bg-blue-600 text-white hover:bg-blue-500 shadow-lg'}`}
-            >
+            <button onClick={handleAddPlayer} disabled={!newPlayerName || !selectedCharId} className={`w-full py-4 rounded-xl font-bold text-lg transition-all flex items-center justify-center gap-2 ${(!newPlayerName || !selectedCharId) ? 'bg-slate-700 text-slate-500' : 'bg-blue-600 text-white hover:bg-blue-500 shadow-lg'}`}>
                 <UserPlus size={24} /> AGREGAR
             </button>
         </div>
@@ -712,14 +669,13 @@ export default function App() {
     );
   }
 
-  // JUEGO (Horizontal Layout)
+  // --- RENDERIZADO DEL JUEGO CON VISTA 3D CSS ---
   return (
     <div className={`relative w-full h-screen overflow-hidden font-sans select-none text-white transition-colors duration-500 ${screenFlash || ''}`} 
          style={{ background: `radial-gradient(circle at center, rgba(${15 + gameProgress * 60}, ${23 - gameProgress * 20}, ${42 - gameProgress * 40}, 1) 0%, rgba(${15 + gameProgress * 20}, ${23 - gameProgress * 10}, ${42 - gameProgress * 30}, 1) 100%)` }}>
         <style>{styles}</style>
         {view === 'win' && <Confetti />}
 
-        {/* MODAL DE EVENTO */}
         {currentEvent && view === 'game' && (
             <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/90 backdrop-blur-md animate-in zoom-in duration-300">
                 <div className="w-full max-w-lg bg-slate-900 rounded-3xl border-4 p-8 text-center shadow-2xl flex flex-col gap-6" style={{ borderColor: currentEvent.typeData.color }}>
@@ -732,7 +688,6 @@ export default function App() {
                             <p className="text-slate-400 text-xs font-bold uppercase tracking-[0.2em]">{currentEvent.typeData.label}</p>
                         </div>
                     </div>
-                    
                     <div className="bg-slate-800 p-6 rounded-2xl border border-white/10">
                         <p className="text-2xl font-medium leading-relaxed">{currentEvent.data.text}</p>
                         {currentEvent.data.actionText && (
@@ -748,7 +703,6 @@ export default function App() {
                             </details>
                         )}
                     </div>
-
                     <div className="grid grid-cols-2 gap-4">
                         {(currentEvent.data.penalty || currentEvent.data.bonus) ? (
                             <>
@@ -765,7 +719,7 @@ export default function App() {
             </div>
         )}
 
-        {/* HUD IZQUIERDO (Jugador) */}
+        {/* HUD */}
         <div className="absolute top-6 left-6 z-40 flex flex-col gap-4">
             <div className="bg-slate-900/90 backdrop-blur-md p-4 pr-8 rounded-2xl border border-white/10 shadow-xl flex items-center gap-4 animate-in slide-in-from-left-10">
                 <div className="w-16 h-16 animate-bounce">{activePlayer?.character.render()}</div>
@@ -774,19 +728,11 @@ export default function App() {
                     <h2 className="text-3xl font-black leading-none whitespace-nowrap" style={{ color: activePlayer?.character.color }}>{activePlayer?.name}</h2>
                 </div>
             </div>
-            {lastLog && (
-                <div className="bg-black/50 p-3 rounded-xl border border-white/10 backdrop-blur-sm text-sm text-slate-300 flex items-center gap-2 max-w-[250px]">
-                    <History size={14} className="shrink-0" /> {lastLog}
-                </div>
-            )}
+            {lastLog && <div className="bg-black/50 p-3 rounded-xl border border-white/10 backdrop-blur-sm text-sm text-slate-300 flex items-center gap-2 max-w-[250px]"><History size={14} className="shrink-0" /> {lastLog}</div>}
         </div>
 
-        {/* HUD DERECHO (Dado) */}
         <div className="absolute top-6 right-6 z-40 flex flex-col items-end gap-4">
-            <button onClick={() => setAudioEnabled(!audioEnabled)} className="pointer-events-auto p-3 bg-slate-800/80 backdrop-blur rounded-full hover:bg-slate-700 border border-white/10 transition-transform active:scale-90">
-                {audioEnabled ? <Volume2 size={24} className="text-green-400" /> : <VolumeX size={24} className="text-red-400" />}
-            </button>
-            
+            <button onClick={() => setAudioEnabled(!audioEnabled)} className="pointer-events-auto p-3 bg-slate-800/80 backdrop-blur rounded-full hover:bg-slate-700 border border-white/10 transition-transform active:scale-90">{audioEnabled ? <Volume2 size={24} className="text-green-400" /> : <VolumeX size={24} className="text-red-400" />}</button>
             {view === 'game' && !currentEvent && (
                <div className="pointer-events-auto mt-4 animate-in slide-in-from-right-10 duration-500 flex flex-col items-center gap-2">
                  <Dice3D rolling={isRolling} value={diceValue} onRoll={rollDice} />
@@ -795,37 +741,41 @@ export default function App() {
             )}
         </div>
 
-        {/* TABLERO CENTRAL */}
-        <div className="absolute left-1/2 top-1/2 w-0 h-0 transition-transform duration-1000 cubic-bezier(0.25, 1, 0.5, 1)" style={{ transform: `translate(${boardTransform.x}px, ${boardTransform.y}px) scale(1)` }}>
-            <svg className="absolute overflow-visible opacity-40" style={{ left: 0, top: 0, zIndex: 0 }}>
-                <defs><filter id="glow"><feGaussianBlur stdDeviation="4" result="blur" /><feComposite in="SourceGraphic" in2="blur" operator="over" /></filter></defs>
-                <path d={`M ${tilesData.map(t => `${t.x},${t.y}`).join(' L ')}`} fill="none" stroke={gameProgress > 0.7 ? '#ef4444' : 'cyan'} strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" filter="url(#glow)" className="animate-pulse" />
-            </svg>
-            {tilesData.map((tile, i) => (
-                <div key={i} className="flex items-center justify-center transition-all duration-500 absolute" style={{ 
-                    left: '50%', top: '50%', 
-                    transform: `translate(calc(-50% + ${tile.x}px), calc(-50% + ${tile.y}px)) scale(${activePlayer?.positionIndex === i ? 1.4 : 1})`,
-                    width: '45px', height: '45px', backgroundColor: tile.typeData.color, borderRadius: activePlayer?.positionIndex === i ? '50%' : '14px',
-                    boxShadow: activePlayer?.positionIndex === i ? `0 0 35px ${tile.typeData.color}` : '0 8px 10px rgba(0,0,0,0.3)',
-                    zIndex: activePlayer?.positionIndex === i ? 30 : 10, border: activePlayer?.positionIndex === i ? '4px solid white' : '1px solid rgba(255,255,255,0.2)'
-                }}>
-                    <tile.typeData.icon size={24} className="text-black/20 absolute" />
-                    <span className="relative text-white font-bold text-lg drop-shadow-md z-10">{i + 1}</span>
-                </div>
-            ))}
-            {players.map((p) => (
-                <div key={p.id} className="absolute left-1/2 top-1/2 w-12 h-12 bg-slate-900 rounded-full border-4 border-white shadow-xl z-50 flex items-center justify-center overflow-hidden transition-all duration-1000 cubic-bezier(0.34, 1.56, 0.64, 1)" style={{
-                    backgroundColor: p.character.color,
-                    transform: `translate(calc(-50% + ${tilesData[p.positionIndex]?.x || 0}px), calc(-50% + ${(tilesData[p.positionIndex]?.y || 0) - 45}px))`,
-                    boxShadow: `0 0 20px ${p.character.color}`
-                }}>
-                    <div className="w-8 h-8">{p.character.render()}</div>
-                    {activePlayer?.id === p.id && <Crown size={20} className="absolute -top-3 text-yellow-400 fill-yellow-400 drop-shadow-lg animate-bounce" />}
-                </div>
-            ))}
+        {/* ESCENA 3D CSS */}
+        <div className="absolute inset-0 flex items-center justify-center scene-3d overflow-visible">
+            <div className="board-3d relative w-0 h-0 transition-transform duration-1000 cubic-bezier(0.25, 1, 0.5, 1)" style={{ transform: `rotateX(55deg) rotateZ(-45deg) translate(${boardTransform.x}px, ${boardTransform.y}px)` }}>
+                {tilesData.map((tile, i) => (
+                    <div key={i} className="tile-3d absolute flex items-center justify-center" style={{ 
+                        left: tile.x, top: tile.y,
+                        width: '50px', height: '50px', 
+                        backgroundColor: tile.typeData.color, 
+                        borderRadius: '50%',
+                        transform: `translate(-50%, -50%) translateZ(${activePlayer?.positionIndex === i ? 20 : 0}px)`,
+                        boxShadow: `0 0 0 4px ${activePlayer?.positionIndex === i ? 'white' : 'rgba(0,0,0,0.2)'}, inset 0 0 20px rgba(0,0,0,0.5), 0 10px 20px rgba(0,0,0,0.4)`
+                    }}>
+                        {/* Pilar 3D fake */}
+                        <div className="absolute top-full left-0 w-full h-4 bg-black/50 rounded-b-full -z-10 blur-sm" />
+                        <span className="text-white font-bold text-lg drop-shadow-md z-10 transform -rotate-45">{i + 1}</span>
+                    </div>
+                ))}
+                
+                {/* JUGADORES 3D */}
+                {players.map((p) => (
+                    <div key={p.id} className="player-3d absolute flex flex-col items-center justify-end" style={{
+                        left: tilesData[p.positionIndex]?.x || 0, 
+                        top: tilesData[p.positionIndex]?.y || 0,
+                        width: '60px', height: '80px',
+                        transform: `translate(-50%, -100%) rotateZ(45deg) rotateX(-55deg) translateY(-10px)`, // Ajuste mágico para que miren a la cámara
+                        zIndex: 100 + p.positionIndex
+                    }}>
+                        <div className="w-16 h-16 drop-shadow-2xl filter brightness-110">{p.character.render()}</div>
+                        {activePlayer?.id === p.id && <Crown size={24} className="absolute -top-8 text-yellow-400 fill-yellow-400 drop-shadow-lg animate-bounce" />}
+                        <div className="w-10 h-3 bg-black/60 rounded-full blur-md mt-[-5px]" /> {/* Sombra */}
+                    </div>
+                ))}
+            </div>
         </div>
 
-        {/* PANTALLA DE VICTORIA */}
         {view === 'win' && activePlayer && (
             <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in zoom-in">
                 <div className="bg-yellow-400 text-black p-8 rounded-3xl shadow-2xl text-center border-4 border-black max-w-sm w-full relative overflow-hidden">
@@ -846,8 +796,6 @@ export default function App() {
                 </div>
             </div>
         )}
-        
-        <div className={`absolute inset-0 pointer-events-none bg-[radial-gradient(transparent_0%,_rgba(0,0,0,${0.5 + gameProgress * 0.4})_100%)] z-30`} />
     </div>
   );
 }
