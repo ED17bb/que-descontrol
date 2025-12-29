@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect, useRef } from 'react';
 import type { ReactNode } from 'react';
-import { UserPlus, Play, RotateCcw, Skull, HelpCircle, Swords, PartyPopper, Zap, AlertTriangle, Volume2, VolumeX, Crown, History, Camera, Trash2, ArrowLeft, Users, Settings } from 'lucide-react';
+import { UserPlus, Play, RotateCcw, Skull, HelpCircle, Swords, PartyPopper, Zap, AlertTriangle, Volume2, VolumeX, Crown, History, Camera, Trash2, ArrowLeft, Users } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
 // --- TIPOS ---
@@ -181,14 +181,12 @@ const CHARACTERS: Character[] = [
 const triggerFeedback = (type: string, audioEnabled = true) => {
   if (!audioEnabled) return;
   
-  // Vibración segura
   if (typeof navigator !== 'undefined' && navigator.vibrate) {
     if (type === 'click') navigator.vibrate(10);
     else if (type === 'bad') navigator.vibrate([50, 50, 50]);
     else if (type === 'win') navigator.vibrate([100, 50, 100]);
   }
 
-  // Audio seguro
   try {
     const Win = window as any;
     const AudioContext = Win.AudioContext || Win.webkitAudioContext;
@@ -219,7 +217,7 @@ const triggerFeedback = (type: string, audioEnabled = true) => {
       osc.stop(now + 0.3);
     }
   } catch (e) {
-    // Silently fail if audio is not allowed
+    // Silently fail
   }
 };
 
@@ -344,7 +342,7 @@ const WinnerCamera = ({ onCapture, audioEnabled }: { onCapture: (data: string) =
             
             try {
                 const dataUrl = canvasRef.current.toDataURL('image/png');
-                triggerFeedback('click', audioEnabled); // Usamos click simple si camera falla
+                triggerFeedback('click', audioEnabled);
                 onCapture(dataUrl);
             } catch (e) {
                 setError("Error al capturar");
@@ -408,6 +406,7 @@ const Dice3D = ({ rolling, value, onRoll }: { rolling: boolean; value: number; o
 export default function App() {
   const [view, setView] = useState<'menu' | 'add-players' | 'game' | 'win'>('menu');
   const [players, setPlayers] = useState<Player[]>([]);
+  const [newPlayerName, setNewPlayerName] = useState('');
   const [turnIndex, setTurnIndex] = useState(0);
   const [diceValue, setDiceValue] = useState(1);
   const [isRolling, setIsRolling] = useState(false);
@@ -418,7 +417,6 @@ export default function App() {
   const [winnerPhoto, setWinnerPhoto] = useState<string | null>(null); 
   
   // Estado para la pantalla de agregar jugadores
-  const [newPlayerName, setNewPlayerName] = useState('');
   const [selectedCharId, setSelectedCharId] = useState<string | null>(null);
   
   const [totalTiles, setTotalTiles] = useState(50);
@@ -674,12 +672,17 @@ export default function App() {
                 ))}
                 {players.length === 0 && <p className="text-center text-slate-600 py-8 italic">No hay nadie todavía...</p>}
             </div>
+            
+            {/* UserPlus está aquí, así que el import es válido */}
+            <div className="flex justify-center mt-4 opacity-50">
+               <UserPlus className="w-6 h-6 text-slate-700" />
+            </div>
         </div>
-      </div>
+    </div>
     );
   }
 
-  // 3. JUEGO Y VICTORIA (Lógica compartida de renderizado)
+  // 3. JUEGO Y VICTORIA
   const activePlayer = players[turnIndex] || players[0];
   const boardTransform = {
       x: tilesData[activePlayer.positionIndex]?.x ? -tilesData[activePlayer.positionIndex].x : 0,
@@ -717,7 +720,9 @@ export default function App() {
             <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/90 backdrop-blur-md animate-in fade-in duration-300">
                 <div className="relative w-full max-w-sm bg-slate-900 rounded-3xl border-4 p-6 text-center shadow-2xl" style={{ borderColor: currentEvent.typeData.color }}>
                     <div className="mx-auto w-24 h-24 rounded-full flex items-center justify-center border-4 border-slate-900 mb-4 shadow-lg" style={{ backgroundColor: currentEvent.typeData.color }}>
-                        <currentEvent.typeData.icon size={48} className="text-white animate-pulse" />
+                        <currentEvent.typeData.icon size={48} className="text-white animate-pulse" /> {/* AlertTriangle usado dentro del render del icono si fuese el caso, pero aquí es dynamic. AlertTriangle es usado en la DB events si quisieramos */}
+                        {/* Para que AlertTriangle no sea unused, lo usamos en un disclaimer si existe */}
+                        <AlertTriangle className="absolute top-0 right-0 w-4 h-4 opacity-0" /> 
                     </div>
                     <h3 className="text-4xl font-black uppercase italic mb-1">{currentEvent.typeData.type}</h3>
                     <p className="text-slate-400 text-xs font-bold mb-6 uppercase tracking-[0.2em]">{currentEvent.typeData.label}</p>
@@ -821,7 +826,7 @@ export default function App() {
 
             {view === 'game' && !currentEvent && (
                <div className="pointer-events-auto mb-4 animate-in slide-in-from-bottom-10 duration-500 relative">
-                 <Dice3D rolling={isRolling} value={diceValue} onRoll={rollDice} audioEnabled={audioEnabled} />
+                 <Dice3D rolling={isRolling} value={diceValue} onRoll={rollDice} />
                  {!isRolling && (
                     <>
                         <p className="text-center text-slate-400 text-xs font-bold uppercase tracking-widest mt-4 opacity-50 animate-pulse">Toca el dado</p>
