@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect, useRef } from 'react';
 import type { ReactNode } from 'react';
-import { UserPlus, Play, RotateCcw, Skull, HelpCircle, Swords, PartyPopper, Zap, AlertTriangle, Volume2, VolumeX, Crown, History, Camera, Trash2, ArrowLeft, Users, Smartphone, Trophy, Dice5 } from 'lucide-react';
+import { UserPlus, Play, RotateCcw, Skull, HelpCircle, Swords, PartyPopper, Zap, AlertTriangle, Volume2, VolumeX, Crown, History, Camera, Trash2, ArrowLeft, Users, Smartphone, Trophy } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
 // --- TIPOS ---
@@ -93,6 +93,14 @@ const triggerFeedback = (type: string, audioEnabled = true) => {
       gain.gain.linearRampToValueAtTime(0, now + 0.3);
       osc.start(now);
       osc.stop(now + 0.3);
+    } else if (type === 'win') {
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(400, now);
+      osc.frequency.linearRampToValueAtTime(800, now + 0.2);
+      gain.gain.setValueAtTime(0.1, now);
+      gain.gain.linearRampToValueAtTime(0, now + 0.5);
+      osc.start(now);
+      osc.stop(now + 0.5);
     }
   } catch (e) {}
 };
@@ -189,7 +197,6 @@ const WinnerCamera = ({ onCapture, audioEnabled }: { onCapture: (data: string) =
     );
 };
 
-// DADO MEJORADO
 const Dice3D = ({ rolling, value, onRoll }: { rolling: boolean; value: number; onRoll: () => void }) => {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const faces: any = { 1: 'rotateX(0deg) rotateY(0deg)', 2: 'rotateX(-90deg) rotateY(0deg)', 3: 'rotateX(0deg) rotateY(-90deg)', 4: 'rotateX(0deg) rotateY(90deg)', 5: 'rotateX(90deg) rotateY(0deg)', 6: 'rotateX(180deg) rotateY(0deg)' };
@@ -222,7 +229,7 @@ export default function App() {
   const [diceValue, setDiceValue] = useState(1);
   const [isRolling, setIsRolling] = useState(false);
   const [currentEvent, setCurrentEvent] = useState<CurrentEvent | null>(null);
-  const [tileNotification, setTileNotification] = useState<TileType | null>(null); // NUEVO ESTADO PARA AVISO PREVIO
+  const [tileNotification, setTileNotification] = useState<TileType | null>(null);
   const [screenFlash, setScreenFlash] = useState<string | null>(null); 
   const [audioEnabled, setAudioEnabled] = useState(true);
   const [lastLog, setLastLog] = useState(""); 
@@ -230,7 +237,6 @@ export default function App() {
   const [selectedCharId, setSelectedCharId] = useState<string | null>(null);
   const [totalTiles, setTotalTiles] = useState(50);
   const [isPortrait, setIsPortrait] = useState(false);
-  const [boardImage, setBoardImage] = useState<string | null>(null); // Se mantiene pero no se usa
 
   useEffect(() => {
     const checkOrientation = () => setIsPortrait(window.innerHeight > window.innerWidth);
@@ -261,26 +267,20 @@ export default function App() {
 
   useEffect(() => {
     if (players.length > 0 && view === 'game') {
-        localStorage.setItem('que-descontrol-state', JSON.stringify({ players, turnIndex, gameState: 'playing', totalTiles, lastLog, boardImage }));
+        localStorage.setItem('que-descontrol-state', JSON.stringify({ players, turnIndex, gameState: 'playing', totalTiles, lastLog }));
     }
-  }, [players, turnIndex, view, totalTiles, lastLog, boardImage]);
+  }, [players, turnIndex, view, totalTiles, lastLog]);
 
-  // GENERACIÓN DE TABLERO: SNAKE PATH OPTIMIZADO (SERPIENTE)
   const tilesData = useMemo(() => {
     const tiles: TileData[] = [];
     const rows = 4;
     const cols = Math.ceil(totalTiles / rows);
-    
-    // Ajustado para dar más aire
     const TILE_WIDTH = 90;
     const TILE_HEIGHT = 80;
     const X_GAP = 20;
     const Y_GAP = 30;
-
     const totalWidth = cols * (TILE_WIDTH + X_GAP);
     const totalHeight = rows * (TILE_HEIGHT + Y_GAP);
-    
-    // Offset un poco a la derecha para compensar el HUD izquierdo
     const startX = -totalWidth / 2 + TILE_WIDTH / 2 + 60; 
     const startY = -totalHeight / 2 + TILE_HEIGHT / 2;
 
@@ -289,13 +289,10 @@ export default function App() {
         const colInRow = i % cols;
         const isEvenRow = row % 2 === 0;
         const col = isEvenRow ? colInRow : (cols - 1 - colInRow);
-
         const x = startX + col * (TILE_WIDTH + X_GAP);
         const y = startY + row * (TILE_HEIGHT + Y_GAP);
-        
         const jitterX = Math.sin(i * 0.8) * 8;
         const jitterY = Math.cos(i * 0.8) * 8;
-
         const typeData = TIPOS_CASILLA[i % TIPOS_CASILLA.length];
         
         tiles.push({ 
@@ -356,12 +353,9 @@ export default function App() {
     const finalRoll = Math.floor(Math.random() * 6) + 1;
     setDiceValue(finalRoll);
     setIsRolling(false);
-    
-    // Esperar un poco para que el usuario vea el número
     setTimeout(() => {
         const currentPlayer = players[turnIndex];
         let newPos = currentPlayer.positionIndex + finalRoll;
-        
         if (newPos >= totalTiles - 1) {
             newPos = totalTiles - 1;
             updatePlayerPosition(newPos);
@@ -369,26 +363,22 @@ export default function App() {
             triggerFeedback('win', audioEnabled);
             return;
         }
-        
         updatePlayerPosition(newPos);
-        
-        // MOSTRAR AVISO DE TIPO DE CASILLA PRIMERO
         setTimeout(() => { 
             const tile = tilesData[newPos];
             if (tile.typeData.type !== 'META') {
-                setTileNotification(tile.typeData); // Activamos el aviso
+                setTileNotification(tile.typeData);
             }
         }, 1000);
     }, 500);
   };
 
   const handleContinueToEvent = () => {
-      // Pasamos del aviso al evento real
       if (!tileNotification) return;
       const events = EVENTOS_DB[tileNotification.type] || EVENTOS_DB['SUERTE'];
       const rand = events[Math.floor(Math.random() * events.length)];
-      setTileNotification(null); // Cerramos aviso
-      setCurrentEvent({ data: rand, typeData: tileNotification }); // Abrimos evento
+      setTileNotification(null);
+      setCurrentEvent({ data: rand, typeData: tileNotification });
   };
 
   const updatePlayerPosition = (newPos: number) => {
@@ -423,12 +413,6 @@ export default function App() {
     ? { x: -tilesData[activePlayer.positionIndex].x, y: -tilesData[activePlayer.positionIndex].y }
     : { x: 0, y: 0 };
 
-  const gameProgress = useMemo(() => {
-      if (!players.length) return 0;
-      const maxPos = Math.max(...players.map(p => p.positionIndex));
-      return Math.min(maxPos / totalTiles, 1);
-  }, [players, totalTiles]);
-
   const styles = `
     .transform-style-3d { transform-style: preserve-3d; }
     .backface-hidden { backface-visibility: hidden; }
@@ -442,8 +426,6 @@ export default function App() {
     .animate-shake { animation: shake 0.4s ease-in-out; }
   `;
 
-  // --- VISTAS ---
-
   if (isPortrait && view === 'game') {
     return (
       <div className="h-screen bg-black text-white flex flex-col items-center justify-center p-8 text-center animate-in fade-in">
@@ -455,47 +437,32 @@ export default function App() {
     );
   }
 
-  // MENÚ
   if (view === 'menu') {
     return (
       <div className="h-screen bg-slate-900 text-white flex items-center justify-center p-6 relative overflow-hidden">
         <div className="absolute inset-0 -z-10 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-purple-900/40 via-slate-900 to-slate-950" />
         <button onClick={() => setAudioEnabled(!audioEnabled)} className="absolute top-6 right-6 p-3 bg-slate-800/50 rounded-full">{audioEnabled ? <Volume2 /> : <VolumeX className="text-red-400" />}</button>
-
         <div className="text-center z-10 w-full max-w-lg">
             <h1 className="text-7xl font-black text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 to-red-600 mb-2 drop-shadow-lg tracking-tighter">QUE DESCONTROL</h1>
             <p className="text-slate-400 text-xl tracking-[0.5em] mb-8 uppercase">Party Edition</p>
-
             <div className="flex gap-4 justify-center mb-6">
                 <button onClick={() => setTotalTiles(25)} className={`px-6 py-3 rounded-xl font-bold transition-all ${totalTiles === 25 ? 'bg-blue-600 text-white shadow-lg scale-105' : 'bg-slate-800 text-slate-400'}`}>RÁPIDO (25)</button>
                 <button onClick={() => setTotalTiles(50)} className={`px-6 py-3 rounded-xl font-bold transition-all ${totalTiles === 50 ? 'bg-purple-600 text-white shadow-lg scale-105' : 'bg-slate-800 text-slate-400'}`}>NORMAL (50)</button>
             </div>
-
             <div className="grid grid-cols-2 gap-4">
-                <button onClick={() => setView('add-players')} className="py-6 rounded-2xl bg-slate-800 font-black text-xl hover:bg-slate-700 transition-all flex flex-col items-center gap-2 border border-white/5">
-                    <Users size={32} className="text-blue-400" />
-                    JUGADORES ({players.length})
-                </button>
-                <button onClick={startGame} disabled={players.length === 0} className={`py-6 rounded-2xl font-black text-xl transition-all flex flex-col items-center gap-2 ${players.length > 0 ? 'bg-gradient-to-br from-yellow-500 to-orange-600 text-white hover:scale-[1.02] shadow-orange-500/30' : 'bg-slate-800 text-slate-600 cursor-not-allowed border border-white/5'}`}>
-                    <Play size={32} fill="currentColor" />
-                    {players.length > 0 && localStorage.getItem('que-descontrol-state') ? 'CONTINUAR' : '¡EMPEZAR!'}
-                </button>
+                <button onClick={() => setView('add-players')} className="py-6 rounded-2xl bg-slate-800 font-black text-xl hover:bg-slate-700 transition-all flex flex-col items-center gap-2 border border-white/5"><Users size={32} className="text-blue-400" /> JUGADORES ({players.length})</button>
+                <button onClick={startGame} disabled={players.length === 0} className={`py-6 rounded-2xl font-black text-xl transition-all flex flex-col items-center gap-2 ${players.length > 0 ? 'bg-gradient-to-br from-yellow-500 to-orange-600 text-white hover:scale-[1.02] shadow-orange-500/30' : 'bg-slate-800 text-slate-600 cursor-not-allowed border border-white/5'}`}><Play size={32} fill="currentColor" /> {players.length > 0 && localStorage.getItem('que-descontrol-state') ? 'CONTINUAR' : '¡EMPEZAR!'}</button>
             </div>
-            
-            {localStorage.getItem('que-descontrol-state') && (
-                <button onClick={resetGame} className="mt-8 text-red-400 text-sm font-bold hover:text-red-300 flex items-center justify-center gap-2 mx-auto"><Trash2 size={16} /> Borrar Partida</button>
-            )}
+            {localStorage.getItem('que-descontrol-state') && (<button onClick={resetGame} className="mt-8 text-red-400 text-sm font-bold hover:text-red-300 flex items-center justify-center gap-2 mx-auto"><Trash2 size={16} /> Borrar Partida</button>)}
         </div>
       </div>
     );
   }
 
-  // AGREGAR JUGADORES
   if (view === 'add-players') {
     return (
       <div className="h-screen bg-slate-900 text-white p-8 relative flex flex-col md:flex-row gap-8 items-start justify-center overflow-auto">
         <button onClick={() => setView('menu')} className="absolute top-6 left-6 p-3 bg-slate-800 rounded-full hover:bg-slate-700"><ArrowLeft /></button>
-        
         <div className="w-full md:w-1/2 max-w-md bg-slate-800/50 p-8 rounded-3xl border border-white/5 flex flex-col justify-center mt-16 md:mt-0">
             <h2 className="text-3xl font-black mb-6">NUEVO JUGADOR</h2>
             <input type="text" value={newPlayerName} onChange={(e) => setNewPlayerName(e.target.value)} placeholder="Nombre..." className="w-full p-4 bg-slate-900 rounded-xl border border-slate-700 text-white text-lg focus:border-yellow-500 outline-none mb-6" />
@@ -511,20 +478,14 @@ export default function App() {
                     );
                 })}
             </div>
-            <button onClick={handleAddPlayer} disabled={!newPlayerName || !selectedCharId} className={`w-full py-4 rounded-xl font-bold text-lg transition-all flex items-center justify-center gap-2 ${(!newPlayerName || !selectedCharId) ? 'bg-slate-700 text-slate-500' : 'bg-blue-600 text-white hover:bg-blue-500 shadow-lg'}`}>
-                <UserPlus size={24} /> AGREGAR
-            </button>
+            <button onClick={handleAddPlayer} disabled={!newPlayerName || !selectedCharId} className={`w-full py-4 rounded-xl font-bold text-lg transition-all flex items-center justify-center gap-2 ${(!newPlayerName || !selectedCharId) ? 'bg-slate-700 text-slate-500' : 'bg-blue-600 text-white hover:bg-blue-500 shadow-lg'}`}><UserPlus size={24} /> AGREGAR</button>
         </div>
-
         <div className="w-full md:w-1/3 bg-slate-900 p-6 rounded-3xl border border-white/5 overflow-y-auto max-h-[60vh] md:max-h-full">
             <h3 className="text-slate-500 font-bold text-sm uppercase tracking-widest mb-4 sticky top-0 bg-slate-900 py-2">Lista ({players.length})</h3>
             <div className="space-y-3">
                 {players.map(p => (
                     <div key={p.id} className="flex items-center justify-between bg-slate-800 p-3 px-4 rounded-xl border-l-4" style={{ borderColor: p.character.color }}>
-                        <div className="flex items-center gap-3">
-                            <div className="w-8 h-8">{p.character.render()}</div>
-                            <span className="font-bold">{p.name}</span>
-                        </div>
+                        <div className="flex items-center gap-3"><div className="w-8 h-8">{p.character.render()}</div><span className="font-bold">{p.name}</span></div>
                         <button onClick={() => handleRemovePlayer(p.id)} className="text-red-400 hover:text-red-300"><Trash2 size={18} /></button>
                     </div>
                 ))}
@@ -535,17 +496,13 @@ export default function App() {
     );
   }
 
-  // --- JUEGO (Horizontal) ---
   return (
-    <div className={`relative w-full h-screen overflow-hidden font-sans select-none text-white transition-colors duration-500 ${screenFlash || ''}`} 
-         style={{ background: '#1e293b' }}>
+    <div className={`relative w-full h-screen overflow-hidden font-sans select-none text-white transition-colors duration-500 ${screenFlash || ''}`} style={{ background: '#1e293b' }}>
         <style>{styles}</style>
         {view === 'win' && <Confetti />}
 
-        {/* FONDO MADERA */}
         <div className="absolute inset-0 opacity-40 -z-10" style={{ backgroundImage: `url("https://www.transparenttextures.com/patterns/wood-pattern.png")`, backgroundSize: '300px' }} />
 
-        {/* AVISO DE TIPO DE CASILLA */}
         {tileNotification && view === 'game' && (
              <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/90 backdrop-blur-md animate-in zoom-in duration-300">
                 <div className="w-full max-w-sm bg-slate-900 rounded-3xl border-4 p-8 text-center shadow-2xl flex flex-col gap-6 items-center" style={{ borderColor: tileNotification.color }}>
@@ -556,31 +513,27 @@ export default function App() {
                         <p className="text-slate-400 text-sm font-bold uppercase tracking-[0.2em] mb-2">CAISTE EN</p>
                         <h3 className="text-5xl font-black uppercase italic tracking-tighter text-white" style={{ textShadow: `0 4px 0 ${tileNotification.color}` }}>{tileNotification.type}</h3>
                     </div>
-                    <button onClick={handleContinueToEvent} className="w-full py-4 rounded-xl bg-white text-slate-900 font-black text-xl hover:scale-105 transition-transform shadow-lg">
-                        VER RETO
-                    </button>
+                    <button onClick={handleContinueToEvent} className="w-full py-4 rounded-xl bg-white text-slate-900 font-black text-xl hover:scale-105 transition-transform shadow-lg">VER RETO</button>
                 </div>
             </div>
         )}
 
-        {/* MODAL DE EVENTO REAL */}
         {currentEvent && view === 'game' && (
             <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/90 backdrop-blur-md animate-in zoom-in duration-300">
                 <div className="w-full max-w-lg bg-slate-900 rounded-3xl border-4 p-8 text-center shadow-2xl flex flex-col gap-6" style={{ borderColor: currentEvent.typeData.color }}>
-                    {/* Header Evento */}
-                    <div className="flex items-center gap-4 border-b border-white/10 pb-4">
-                        <div className="w-16 h-16 rounded-full flex items-center justify-center shadow-lg" style={{ backgroundColor: currentEvent.typeData.color }}>
-                            <currentEvent.typeData.icon size={32} className="text-white" />
+                    <div className="flex items-center justify-center gap-4">
+                        <div className="w-20 h-20 rounded-full flex items-center justify-center border-4 border-slate-900 shadow-lg" style={{ backgroundColor: currentEvent.typeData.color }}>
+                            <currentEvent.typeData.icon size={40} className="text-white animate-pulse" />
+                            <AlertTriangle className="absolute top-0 right-0 w-4 h-4 opacity-0" />
                         </div>
-                        <div className="text-left flex-1">
-                            <p className="text-slate-400 text-xs font-bold uppercase tracking-widest">DESAFÍO DE</p>
-                            <h3 className="text-2xl font-black uppercase italic">{currentEvent.typeData.type}</h3>
+                        <div className="text-left">
+                            <h3 className="text-4xl font-black uppercase italic">{currentEvent.typeData.type}</h3>
+                            <p className="text-slate-400 text-xs font-bold uppercase tracking-[0.2em]">{currentEvent.typeData.label}</p>
                         </div>
                     </div>
-                    
                     <div className="bg-slate-800 p-6 rounded-2xl border border-white/10">
                         <p className="text-2xl font-medium leading-relaxed">{currentEvent.data.text}</p>
-                        {currentEvent.data.actionText && <div className="mt-4 inline-block bg-black/40 px-4 py-1 rounded-lg text-yellow-400 text-sm font-bold uppercase">{currentEvent.data.actionText}</div>}
+                        {currentEvent.data.actionText && <div className="mt-4 inline-block bg-black/40 px-4 py-1 rounded-lg text-yellow-400 text-sm font-bold uppercase"><AlertTriangle size={16} className="inline mr-2 mb-1" />{currentEvent.data.actionText}</div>}
                         {currentEvent.data.answer && (
                             <details className="mt-4 pt-4 border-t border-white/10 cursor-pointer text-slate-500 hover:text-white">
                                 <summary className="text-sm italic list-none">Ver respuesta</summary>
@@ -596,28 +549,18 @@ export default function App() {
             </div>
         )}
 
-        {/* HUD IZQUIERDO: JUGADOR + DADO */}
         <div className="absolute top-0 left-0 bottom-0 w-48 bg-slate-900/95 border-r border-white/10 p-4 z-40 flex flex-col gap-4 shadow-2xl justify-between">
-            {/* Info Jugador */}
             <div className="flex flex-col items-center text-center pt-4">
                 <div className="w-16 h-16 animate-bounce mb-2 filter drop-shadow-lg">{activePlayer?.character.render()}</div>
                 <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest">TURNO DE</p>
                 <h2 className="text-2xl font-black leading-none truncate w-full" style={{ color: activePlayer?.character.color }}>{activePlayer?.name}</h2>
             </div>
             
-            {/* DADO y BOTÓN (Movidi aquí) */}
             <div className="flex flex-col items-center gap-3 my-auto">
                 <Dice3D rolling={isRolling} value={diceValue} onRoll={rollDice} />
-                <button 
-                    onClick={rollDice} 
-                    disabled={isRolling || !!currentEvent || !!tileNotification} 
-                    className={`w-full py-3 rounded-xl font-black text-sm uppercase tracking-widest shadow-lg transition-all ${isRolling ? 'bg-slate-700 text-slate-500' : 'bg-gradient-to-r from-indigo-600 to-blue-600 text-white hover:scale-105 animate-pulse'}`}
-                >
-                    {isRolling ? '...' : 'TIRAR'}
-                </button>
+                <button onClick={rollDice} disabled={isRolling || !!currentEvent || !!tileNotification} className={`w-full py-3 rounded-xl font-black text-sm uppercase tracking-widest shadow-lg transition-all ${isRolling ? 'bg-slate-700 text-slate-500' : 'bg-gradient-to-r from-indigo-600 to-blue-600 text-white hover:scale-105 animate-pulse'}`}>{isRolling ? '...' : 'TIRAR'}</button>
             </div>
 
-            {/* Lista Pequeña */}
             <div className="flex-1 overflow-y-auto space-y-2 custom-scrollbar max-h-40 border-t border-white/10 pt-4">
                 {players.map((p, i) => (
                     <div key={p.id} className={`flex items-center gap-2 p-2 rounded-lg border transition-all ${i === turnIndex ? 'bg-white/10 border-white/30' : 'bg-transparent border-transparent opacity-50'}`}>
@@ -630,25 +573,15 @@ export default function App() {
             {lastLog && <div className="text-[10px] text-slate-400 italic text-center pt-2 leading-tight"><History size={10} className="inline mr-1" /> {lastLog}</div>}
         </div>
 
-        {/* BOTONES DERECHA SUPERIOR (CONFIG) */}
         <div className="absolute top-4 right-4 z-40 flex gap-2">
             <button onClick={() => setAudioEnabled(!audioEnabled)} className="p-3 bg-slate-800/90 backdrop-blur rounded-full hover:bg-slate-700 border border-white/10 shadow-lg">{audioEnabled ? <Volume2 size={20} className="text-green-400" /> : <VolumeX size={20} className="text-red-400" />}</button>
             <button onClick={() => setView('menu')} className="p-3 bg-slate-800/90 backdrop-blur rounded-full hover:bg-slate-700 border border-white/10 shadow-lg text-slate-300"><ArrowLeft size={20} /></button>
         </div>
 
-        {/* TABLERO 2D MASTER - SERPIENTE */}
         <div className="absolute top-0 left-48 right-0 bottom-0 overflow-hidden flex items-center justify-center scene-3d">
             <div className="board-3d relative transition-transform duration-1000 cubic-bezier(0.25, 1, 0.5, 1)" style={{ transform: `rotateX(45deg) translate(${boardTransform.x}px, ${boardTransform.y}px)` }}>
-                {/* CAMINO DE BALDOSAS */}
                 <svg className="absolute overflow-visible opacity-50" style={{ left: 0, top: 0, zIndex: 0 }}>
-                    <path 
-                        d={`M ${tilesData.map(t => `${t.x},${t.y}`).join(' L ')}`} 
-                        fill="none" 
-                        stroke="rgba(255,255,255,0.2)" 
-                        strokeWidth="100" 
-                        strokeLinecap="round" 
-                        strokeLinejoin="round" 
-                    />
+                    <path d={`M ${tilesData.map(t => `${t.x},${t.y}`).join(' L ')}`} fill="none" stroke="rgba(255,255,255,0.2)" strokeWidth="100" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
 
                 {tilesData.map((tile, i) => (
@@ -658,19 +591,18 @@ export default function App() {
                         backgroundColor: tile.typeData.color, 
                         borderRadius: '12px',
                         transform: `translate(-50%, -50%) rotate(${tile.rotation}deg) translateZ(${activePlayer?.positionIndex === i ? 20 : 0}px)`,
-                        boxShadow: `0 0 0 4px ${activePlayer?.positionIndex === i ? 'white' : 'rgba(0,0,0,0.1)'}, 0 10px 0 rgba(0,0,0,0.2)` // Efecto de grosor 3D
+                        boxShadow: `0 0 0 4px ${activePlayer?.positionIndex === i ? 'white' : 'rgba(0,0,0,0.1)'}, 0 10px 0 rgba(0,0,0,0.2)`
                     }}>
                         {tile.typeData.type === 'META' ? <Trophy className="text-yellow-100 w-8 h-8 animate-bounce" /> : <span className="text-white/90 font-bold text-xl drop-shadow-md z-10">{i + 1}</span>}
                     </div>
                 ))}
                 
-                {/* FICHAS DE JUGADORES */}
                 {players.map((p) => (
                     <div key={p.id} className="player-3d absolute flex flex-col items-center justify-end transition-all duration-700 ease-in-out" style={{
                         left: tilesData[p.positionIndex]?.x || 0, 
                         top: tilesData[p.positionIndex]?.y || 0,
                         width: '60px', height: '80px',
-                        transform: `translate(-50%, -80%) rotateX(-45deg) translateY(-20px)`, // Ajuste para "pararse"
+                        transform: `translate(-50%, -80%) rotateX(-45deg) translateY(-20px)`,
                         zIndex: 100 + p.positionIndex
                     }}>
                         <div className="w-16 h-16 drop-shadow-2xl filter brightness-110 hover:scale-110 transition-transform">{p.character.render()}</div>
@@ -681,7 +613,7 @@ export default function App() {
         </div>
 
         {view === 'win' && activePlayer && (
-            <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-sm p-4 animate-in zoom-in">
+            <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-md p-4 animate-in zoom-in">
                 <div className="bg-yellow-400 text-black p-8 rounded-3xl shadow-2xl text-center border-4 border-black max-w-sm w-full">
                     {!winnerPhoto ? (
                         <div className="mb-6"><WinnerCamera onCapture={setWinnerPhoto} audioEnabled={audioEnabled} /><p className="text-xs font-bold uppercase tracking-widest mt-2 animate-pulse">¡FOTO!</p></div>
