@@ -407,7 +407,6 @@ export default function App() {
   const [isPortrait, setIsPortrait] = useState(false);
   const [boardImage, setBoardImage] = useState<string | null>(null);
 
-  // NUEVA FUNCIÓN PARA CARGAR IMAGEN
   const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
@@ -442,7 +441,8 @@ export default function App() {
                     setTotalTiles(p.totalTiles || 50);
                     setLastLog(p.lastLog || "");
                     setBoardImage(p.boardImage || null);
-                    if (p.gameState === 'playing') setView('game');
+                    // IMPORTANTE: NO SETEAMOS LA VISTA A 'game' AUTOMÁTICAMENTE
+                    // if (p.gameState === 'playing') setView('game'); <--- ELIMINADO PARA CORREGIR BUG
                 }
             } catch (e) { console.error(e); }
         }
@@ -655,7 +655,7 @@ export default function App() {
                 </button>
                 <button onClick={startGame} disabled={players.length === 0} className={`py-6 rounded-2xl font-black text-xl transition-all flex flex-col items-center gap-2 ${players.length > 0 ? 'bg-gradient-to-br from-yellow-500 to-orange-600 text-white hover:scale-[1.02] shadow-orange-500/30' : 'bg-slate-800 text-slate-600 cursor-not-allowed border border-white/5'}`}>
                     <Play size={32} fill="currentColor" />
-                    ¡JUGAR!
+                    {players.length > 0 ? 'CONTINUAR' : '¡JUGAR!'}
                 </button>
             </div>
             
