@@ -3,12 +3,18 @@ import { UserPlus, Play, RotateCcw, Skull, HelpCircle, Swords, PartyPopper, Zap,
 import type { LucideIcon } from 'lucide-react';
 
 // --- DEFINICIONES DE TIPOS (TYPESCRIPT) ---
+interface Character {
+  id: string;
+  name: string;
+  color: string;
+  render: () => JSX.Element;
+}
+
 interface Player {
   id: number;
   name: string;
   positionIndex: number;
-  color: string;
-  avatar: string;
+  character: Character; // Ahora guardamos el personaje completo
 }
 
 interface TileType {
@@ -29,9 +35,9 @@ interface GameEventData {
   text: string;
   penalty?: number;
   bonus?: number;
-  timer?: number;
   actionText?: string;
   answer?: string;
+  // Timer eliminado a petición
 }
 
 interface CurrentEvent {
@@ -39,11 +45,119 @@ interface CurrentEvent {
   typeData: TileType;
 }
 
+// --- AVATARES PERSONALIZADOS (SVG EN CÓDIGO) ---
+const CHARACTERS: Character[] = [
+  { 
+    id: 'link', name: 'Link', color: '#10b981', 
+    render: () => (
+      <svg viewBox="0 0 100 100" className="w-full h-full drop-shadow-md">
+        <path d="M20,80 L50,10 L80,80 Z" fill="#10b981" /> {/* Gorro */}
+        <circle cx="50" cy="70" r="20" fill="#fcd34d" /> {/* Pelo */}
+        <rect x="45" y="10" width="10" height="90" fill="#fbbf24" transform="rotate(-45 50 50)" /> {/* Espada */}
+      </svg>
+    )
+  },
+  { 
+    id: 'titan', name: 'Titán', color: '#ef4444', 
+    render: () => (
+      <svg viewBox="0 0 100 100" className="w-full h-full drop-shadow-md">
+        <rect x="20" y="20" width="60" height="70" rx="10" fill="#991b1b" /> {/* Cara */}
+        <rect x="25" y="25" width="50" height="60" rx="5" fill="#ef4444" /> {/* Músculo */}
+        <circle cx="35" cy="45" r="5" fill="white" /> {/* Ojo */}
+        <circle cx="65" cy="45" r="5" fill="white" /> {/* Ojo */}
+        <rect x="35" y="70" width="30" height="5" fill="white" /> {/* Dientes */}
+      </svg>
+    )
+  },
+  { 
+    id: 'trump', name: 'Presi', color: '#3b82f6', 
+    render: () => (
+      <svg viewBox="0 0 100 100" className="w-full h-full drop-shadow-md">
+        <circle cx="50" cy="50" r="35" fill="#fdba74" /> {/* Cara */}
+        <path d="M20,40 Q50,0 80,40" fill="#fcd34d" stroke="#f59e0b" strokeWidth="3" /> {/* Copete */}
+        <rect x="40" y="75" width="20" height="25" fill="#ef4444" /> {/* Corbata */}
+      </svg>
+    )
+  },
+  { 
+    id: 'peach', name: 'Princesa', color: '#ec4899', 
+    render: () => (
+      <svg viewBox="0 0 100 100" className="w-full h-full drop-shadow-md">
+        <circle cx="50" cy="60" r="30" fill="#fbcfe8" />
+        <path d="M30,30 L40,50 L50,20 L60,50 L70,30 L50,50 Z" fill="#fbbf24" /> {/* Corona */}
+        <circle cx="50" cy="60" r="5" fill="#db2777" /> {/* Joya */}
+      </svg>
+    )
+  },
+  { 
+    id: 'monk', name: 'Monje', color: '#f97316', 
+    render: () => (
+      <svg viewBox="0 0 100 100" className="w-full h-full drop-shadow-md">
+        <circle cx="50" cy="50" r="35" fill="#fdba74" />
+        <path d="M20,80 Q50,100 80,80" fill="none" stroke="#ea580c" strokeWidth="8" /> {/* Túnica */}
+        <circle cx="50" cy="45" r="3" fill="#000" /> {/* Punto frente */}
+      </svg>
+    )
+  },
+  { 
+    id: 'japan', name: 'Japón', color: '#ffffff', 
+    render: () => (
+      <svg viewBox="0 0 100 100" className="w-full h-full drop-shadow-md">
+        <circle cx="50" cy="50" r="40" fill="white" stroke="#ef4444" strokeWidth="2" />
+        <circle cx="50" cy="50" r="15" fill="#ef4444" /> {/* Sol naciente */}
+        <rect x="20" y="40" width="60" height="10" fill="#ef4444" opacity="0.3" /> {/* Banda */}
+      </svg>
+    )
+  },
+  { 
+    id: 'lara', name: 'Lara', color: '#a855f7', 
+    render: () => (
+      <svg viewBox="0 0 100 100" className="w-full h-full drop-shadow-md">
+        <circle cx="50" cy="50" r="35" fill="#d4a373" />
+        <rect x="30" y="45" width="40" height="10" fill="#1e293b" /> {/* Gafas */}
+        <rect x="45" y="20" width="10" height="80" fill="#3f2c22" rx="5" /> {/* Trenza */}
+      </svg>
+    )
+  },
+  { 
+    id: 'goku', name: 'Saiyan', color: '#f59e0b', 
+    render: () => (
+      <svg viewBox="0 0 100 100" className="w-full h-full drop-shadow-md">
+        <circle cx="50" cy="60" r="25" fill="#fdba74" />
+        <path d="M20,50 L10,20 L40,30 L50,5 L60,30 L90,20 L80,50 Z" fill="#000" /> {/* Pelo picudo */}
+        <rect x="25" y="80" width="50" height="20" fill="#f97316" /> {/* Gi */}
+      </svg>
+    )
+  },
+  { 
+    id: 'buu', name: 'Buu', color: '#f472b6', 
+    render: () => (
+      <svg viewBox="0 0 100 100" className="w-full h-full drop-shadow-md">
+        <circle cx="50" cy="60" r="35" fill="#f472b6" />
+        <path d="M50,30 Q80,10 90,30" fill="none" stroke="#f472b6" strokeWidth="12" strokeLinecap="round" /> {/* Antena */}
+        <rect x="35" y="55" width="30" height="5" fill="black" rx="2" /> {/* Ojos cerrados */}
+      </svg>
+    )
+  },
+  { 
+    id: 'panda', name: 'Panda', color: '#1f2937', 
+    render: () => (
+      <svg viewBox="0 0 100 100" className="w-full h-full drop-shadow-md">
+        <circle cx="30" cy="30" r="12" fill="black" /> {/* Oreja */}
+        <circle cx="70" cy="30" r="12" fill="black" /> {/* Oreja */}
+        <circle cx="50" cy="55" r="35" fill="white" />
+        <circle cx="35" cy="50" r="8" fill="black" /> {/* Ojo */}
+        <circle cx="65" cy="50" r="8" fill="black" /> {/* Ojo */}
+        <circle cx="50" cy="65" r="4" fill="black" /> {/* Nariz */}
+      </svg>
+    )
+  }
+];
+
 // --- UTILIDAD DE AUDIO Y HÁPTICA ---
 const triggerFeedback = (type: string, audioEnabled = true) => {
   if (audioEnabled) {
     try {
-      // Solución para TypeScript con window extendido
       const Win = window as any;
       const AudioContext = Win.AudioContext || Win.webkitAudioContext;
       
@@ -102,11 +216,11 @@ const triggerFeedback = (type: string, audioEnabled = true) => {
           gain.gain.linearRampToValueAtTime(0, now + 0.05);
           osc.start(now);
           osc.stop(now + 0.05);
-        } else if (type === 'tick') {
+        } else if (type === 'roll') {
           osc.type = 'square';
-          osc.frequency.setValueAtTime(1000, now);
-          gain.gain.setValueAtTime(0.05, now);
-          gain.gain.exponentialRampToValueAtTime(0.01, now + 0.05);
+          osc.frequency.setValueAtTime(100, now);
+          gain.gain.setValueAtTime(0.02, now);
+          gain.gain.linearRampToValueAtTime(0, now + 0.05);
           osc.start(now);
           osc.stop(now + 0.05);
         } else if (type === 'alarm') {
@@ -128,12 +242,9 @@ const triggerFeedback = (type: string, audioEnabled = true) => {
     else if (type === 'bad' || type === 'alarm') navigator.vibrate([100, 50, 100, 50, 100]);
     else if (type === 'win') navigator.vibrate([200, 100, 200, 100, 400]);
     else if (type === 'roll') navigator.vibrate([10, 30, 10]);
-    else if (type === 'tick') navigator.vibrate(5);
     else if (type === 'camera') navigator.vibrate(50);
   }
 };
-
-const AVATARES = ['🤖', '👽', '👻', '🤡', '🤠', '😈', '🐶', '🦄', '💩', '🎃', '💀', '👾'];
 
 const TIPOS_CASILLA: TileType[] = [
   { color: '#ef4444', type: 'PELIGRO', icon: Skull, label: 'Castigo Físico' }, 
@@ -145,29 +256,29 @@ const TIPOS_CASILLA: TileType[] = [
 
 const EVENTOS_DB: Record<string, GameEventData[]> = {
   PELIGRO: [
-    { text: "¡TERREMOTO! Todos cambian de asiento hacia la izquierda.", penalty: 0, timer: 10 },
-    { text: "Haz 10 flexiones o retrocede 3 casillas.", penalty: -3, actionText: "Si fallas: -3", timer: 20 },
+    { text: "¡TERREMOTO! Todos cambian de asiento hacia la izquierda.", penalty: 0 },
+    { text: "Haz 10 flexiones o retrocede 3 casillas.", penalty: -3, actionText: "Si fallas: -3" },
     { text: "Mantén una sentadilla isométrica hasta tu próximo turno.", penalty: -2, actionText: "Si caes: -2" },
-    { text: "El suelo es lava: Súbete a una silla YA.", penalty: -5, actionText: "El último: -5", timer: 5 },
-    { text: "Haz el puente (yoga) por 10 segundos.", penalty: -2, actionText: "Falla y retrocede 2", timer: 15 },
-    { text: "Camina como cangrejo alrededor de la mesa.", penalty: 0, timer: 20 },
+    { text: "El suelo es lava: Súbete a una silla YA.", penalty: -5, actionText: "El último: -5" },
+    { text: "Haz el puente (yoga) por 10 segundos.", penalty: -2, actionText: "Falla y retrocede 2" },
+    { text: "Camina como cangrejo alrededor de la mesa.", penalty: 0 },
     { text: "Debes jugar con los ojos cerrados hasta tu próximo turno.", penalty: 0 }
   ],
   TRIVIA: [
-    { text: "¿Cuál es la capital de Australia?", answer: "Canberra", bonus: 1, actionText: "Acierta y avanza 1", timer: 10 },
-    { text: "¿En qué año llegó el hombre a la luna?", answer: "1969", penalty: -2, actionText: "Falla y retrocede 2", timer: 10 },
-    { text: "¿Quién canta 'Thriller'?", answer: "Michael Jackson", bonus: 2, actionText: "Bonus +2 cantando", timer: 15 },
-    { text: "¿Cuántos corazones tiene un pulpo?", answer: "Tres", bonus: 2, actionText: "Acierta y avanza 2", timer: 10 },
+    { text: "¿Cuál es la capital de Australia?", answer: "Canberra", bonus: 1, actionText: "Acierta y avanza 1" },
+    { text: "¿En qué año llegó el hombre a la luna?", answer: "1969", penalty: -2, actionText: "Falla y retrocede 2" },
+    { text: "¿Quién canta 'Thriller'?", answer: "Michael Jackson", bonus: 2, actionText: "Bonus +2 cantando" },
+    { text: "¿Cuántos corazones tiene un pulpo?", answer: "Tres", bonus: 2, actionText: "Acierta y avanza 2" },
     { text: "¿Qué ingrediente NO lleva la pizza Hawaiana?", answer: "El buen gusto (es broma, Piña)", penalty: 0 },
-    { text: "Completa: 'Camarón que se duerme...'", answer: "...se lo lleva la corriente", bonus: 1, actionText: "Avanza 1", timer: 10 }
+    { text: "Completa: 'Camarón que se duerme...'", answer: "...se lo lleva la corriente", bonus: 1, actionText: "Avanza 1" }
   ],
   CHAMUYO: [
-    { text: "Envía un audio cantando a tu ex (o a tu madre).", penalty: -5, actionText: "Hazlo o -5 casillas", timer: 30 },
-    { text: "Deja que el grupo lea tu último WhatsApp.", penalty: -3, actionText: "Hazlo o -3 casillas", timer: 15 },
-    { text: "Imita a otro jugador. Si adivinan quién es, avanzas.", bonus: 2, actionText: "Avanza 2 si adivinan", timer: 20 },
-    { text: "Llama a una pizzería y pide una hamburguesa.", penalty: -4, actionText: "Hazlo o -4 casillas", timer: 45 },
+    { text: "Envía un audio cantando a tu ex (o a tu madre).", penalty: -5, actionText: "Hazlo o -5 casillas" },
+    { text: "Deja que el grupo lea tu último WhatsApp.", penalty: -3, actionText: "Hazlo o -3 casillas" },
+    { text: "Imita a otro jugador. Si adivinan quién es, avanzas.", bonus: 2, actionText: "Avanza 2 si adivinan" },
+    { text: "Llama a una pizzería y pide una hamburguesa.", penalty: -4, actionText: "Hazlo o -4 casillas" },
     { text: "Debes hablar con acento extranjero hasta tu próximo turno.", penalty: 0 },
-    { text: "Elige a alguien para que te haga cosquillas por 10 seg.", penalty: -2, actionText: "Aguanta o -2", timer: 15 }
+    { text: "Elige a alguien para que te haga cosquillas por 10 seg.", penalty: -2, actionText: "Aguanta o -2" }
   ],
   SUERTE: [
     { text: "¡Un taxi te lleva! Avanza rápido.", bonus: 3, actionText: "¡Avanzas 3!" },
@@ -281,46 +392,6 @@ const WinnerCamera = ({ onCapture, audioEnabled }: { onCapture: (data: string) =
     );
 };
 
-const CountdownCircle = ({ seconds, onComplete, audioEnabled }: { seconds: number, onComplete: () => void, audioEnabled: boolean }) => {
-  const [timeLeft, setTimeLeft] = useState(seconds);
-  const radius = 30;
-  const circumference = 2 * Math.PI * radius;
-  const strokeDashoffset = circumference - (timeLeft / seconds) * circumference;
-
-  useEffect(() => {
-    if (timeLeft <= 0) {
-        triggerFeedback('alarm', audioEnabled);
-        onComplete();
-        return;
-    }
-
-    const timer = setInterval(() => {
-      setTimeLeft(prev => prev - 1);
-      if (timeLeft <= 6 && timeLeft > 1) triggerFeedback('tick', audioEnabled);
-    }, 1000);
-
-    return () => clearInterval(timer);
-  }, [timeLeft, onComplete, audioEnabled]);
-
-  return (
-    <div className="relative flex items-center justify-center w-20 h-20 mx-auto my-4 animate-in zoom-in duration-300">
-      <svg className="transform -rotate-90 w-20 h-20">
-        <circle
-          cx="40" cy="40" r={radius} stroke="rgba(255,255,255,0.1)" strokeWidth="6" fill="transparent"
-        />
-        <circle
-          cx="40" cy="40" r={radius} stroke={timeLeft <= 5 ? '#ef4444' : '#eab308'} strokeWidth="6" fill="transparent"
-          strokeDasharray={circumference} strokeDashoffset={strokeDashoffset} strokeLinecap="round"
-          className="transition-all duration-1000 ease-linear"
-        />
-      </svg>
-      <span className={`absolute text-2xl font-black ${timeLeft <= 5 ? 'text-red-500 animate-pulse' : 'text-white'}`}>
-        {timeLeft}
-      </span>
-    </div>
-  );
-};
-
 interface Dice3DProps {
     rolling: boolean;
     value: number;
@@ -406,19 +477,19 @@ interface FichaProps {
     y: number;
     color: string;
     isActive: boolean;
-    avatar: string;
+    character: Character;
 }
 
-const Ficha = ({ x, y, color, isActive, avatar }: FichaProps) => {
+const Ficha = ({ x, y, color, isActive, character }: FichaProps) => {
   return (
     <div
       style={{
         position: 'absolute',
         left: `50%`,
         top: `50%`,
-        transform: `translate(calc(-50% + ${x}px), calc(-50% + ${y - 35}px))`,
-        width: '40px',
-        height: '40px',
+        transform: `translate(calc(-50% + ${x}px), calc(-50% + ${y - 45}px))`, // Ajuste de altura
+        width: '48px',
+        height: '48px',
         backgroundColor: color,
         borderRadius: '50%',
         border: '3px solid white',
@@ -428,10 +499,12 @@ const Ficha = ({ x, y, color, isActive, avatar }: FichaProps) => {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        fontSize: '24px'
+        overflow: 'hidden'
       }}
     >
-      <span className="drop-shadow-md filter">{avatar}</span>
+      <div className="w-8 h-8">
+        {character.render()}
+      </div>
       {isActive && (
         <div className="absolute -top-6 animate-bounce">
            <Crown size={20} className="text-yellow-400 fill-yellow-400 drop-shadow-lg" />
@@ -451,7 +524,6 @@ interface EventModalProps {
 const EventModal = ({ event, typeData, onApply, audioEnabled }: EventModalProps) => {
   if (!event) return null;
   const Icon = typeData.icon;
-  const [timerExpired, setTimerExpired] = useState(false);
 
   useEffect(() => {
     if (typeData.type === 'PELIGRO') triggerFeedback('bad', audioEnabled);
@@ -467,10 +539,10 @@ const EventModal = ({ event, typeData, onApply, audioEnabled }: EventModalProps)
   }, [typeData, audioEnabled]);
 
   return (
-    <div className={`fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/90 backdrop-blur-md animate-in fade-in duration-300 ${timerExpired ? 'bg-red-900/90' : ''}`}>
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/90 backdrop-blur-md animate-in fade-in duration-300">
       <div 
         className="relative w-full max-w-sm bg-slate-900 rounded-3xl border-4 p-6 text-center shadow-2xl overflow-hidden"
-        style={{ borderColor: timerExpired ? '#ef4444' : typeData.color }}
+        style={{ borderColor: typeData.color }}
       >
         <div className="absolute inset-0 opacity-10 bg-[url('https://www.transparenttextures.com/patterns/diagonal-stripes.png')]" />
 
@@ -485,18 +557,6 @@ const EventModal = ({ event, typeData, onApply, audioEnabled }: EventModalProps)
           {typeData.type}
         </h3>
         <p className="text-slate-400 text-xs font-bold mb-4 uppercase tracking-[0.2em]">{typeData.label}</p>
-        
-        {event.timer && !timerExpired && (
-            <CountdownCircle 
-                seconds={event.timer} 
-                onComplete={() => setTimerExpired(true)} 
-                audioEnabled={audioEnabled} 
-            />
-        )}
-
-        {timerExpired && (
-            <div className="mb-4 text-red-500 font-black text-2xl animate-bounce uppercase">¡TIEMPO!</div>
-        )}
         
         <div className="bg-slate-800 p-6 rounded-2xl border border-white/10 mb-6 shadow-inner relative z-10 min-h-[100px] flex flex-col justify-center">
           <p className="text-white text-xl font-medium leading-relaxed">
@@ -567,9 +627,10 @@ export default function App() {
   const [audioEnabled, setAudioEnabled] = useState(true);
   const [lastLog, setLastLog] = useState(""); 
   const [winnerPhoto, setWinnerPhoto] = useState<string | null>(null); 
+  const [selectedCharId, setSelectedCharId] = useState<string | null>(null);
   
-  // --- CONFIGURACIÓN DE 3 MODOS ---
-  const [totalTiles, setTotalTiles] = useState(60);
+  // --- CONFIGURACIÓN DE MODOS (25/50) ---
+  const [totalTiles, setTotalTiles] = useState(50); // Default: NORMAL
 
   // --- PERSISTENCIA DE DATOS (Auto-Save) ---
   useEffect(() => {
@@ -580,7 +641,7 @@ export default function App() {
             setPlayers(parsed.players || []);
             setTurnIndex(parsed.turnIndex || 0);
             setGameState(parsed.gameState || 'setup');
-            setTotalTiles(parsed.totalTiles || 60);
+            setTotalTiles(parsed.totalTiles || 50);
             setLastLog(parsed.lastLog || "");
         } catch(e) { console.error("Error loading state", e); }
     }
@@ -602,8 +663,7 @@ export default function App() {
     let maxRadius = 160; 
     let minRadius = 20;
     
-    if (totalTiles >= 90) maxRadius = 220;
-    else if (totalTiles <= 30) maxRadius = 120;
+    if (totalTiles <= 25) maxRadius = 120;
 
     const angleIncrement = 0.45;
 
@@ -628,12 +688,10 @@ export default function App() {
 
   // --- LÓGICA DEL JUEGO ---
   const addPlayer = () => {
-    if (newPlayerName.trim() === '') return;
-    const colors = ['#f472b6', '#34d399', '#60a5fa', '#fb923c', '#a78bfa', '#f87171']; 
-    const availableAvatars = AVATARES.filter(a => !players.some(p => p.avatar === a));
-    const randomAvatar = availableAvatars.length > 0 
-        ? availableAvatars[Math.floor(Math.random() * availableAvatars.length)] 
-        : AVATARES[Math.floor(Math.random() * AVATARES.length)];
+    if (newPlayerName.trim() === '' || !selectedCharId) return;
+    
+    const character = CHARACTERS.find(c => c.id === selectedCharId);
+    if (!character) return;
 
     setPlayers([
         ...players, 
@@ -641,11 +699,11 @@ export default function App() {
             id: Date.now(), 
             name: newPlayerName, 
             positionIndex: 0, 
-            color: colors[players.length % colors.length],
-            avatar: randomAvatar
+            character: character // Asignamos el personaje completo
         }
     ]);
     setNewPlayerName('');
+    setSelectedCharId(null);
     triggerFeedback('click', audioEnabled);
   };
 
@@ -780,49 +838,75 @@ export default function App() {
         </h1>
         <p className="text-slate-400 mb-8 text-xl font-medium tracking-widest uppercase">Edición Fiesta</p>
         
-        <div className="w-full max-w-md bg-slate-800/80 backdrop-blur-sm p-6 rounded-3xl shadow-2xl border border-white/5 z-10">
+        <div className="w-full max-w-md bg-slate-800/80 backdrop-blur-sm p-6 rounded-3xl shadow-2xl border border-white/5 z-10 overflow-y-auto max-h-[80vh] custom-scrollbar">
           
-          <div className="flex bg-slate-900/50 p-1 rounded-xl mb-6 border border-white/5">
+          <div className="flex bg-slate-900/50 p-1 rounded-xl mb-6 border border-white/5 shrink-0">
             <button 
-                onClick={() => setTotalTiles(30)}
-                className={`flex-1 py-2 rounded-lg font-bold text-xs sm:text-sm transition-all ${totalTiles === 30 ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:text-white'}`}
+                onClick={() => setTotalTiles(25)}
+                className={`flex-1 py-3 rounded-lg font-bold text-sm transition-all ${totalTiles === 25 ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:text-white'}`}
             >
-                RÁPIDO (30)
+                RÁPIDO (25)
             </button>
             <button 
-                onClick={() => setTotalTiles(60)}
-                className={`flex-1 py-2 rounded-lg font-bold text-xs sm:text-sm transition-all ${totalTiles === 60 ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:text-white'}`}
+                onClick={() => setTotalTiles(50)}
+                className={`flex-1 py-3 rounded-lg font-bold text-sm transition-all ${totalTiles === 50 ? 'bg-purple-600 text-white shadow-lg' : 'text-slate-400 hover:text-white'}`}
             >
-                NORMAL (60)
-            </button>
-            <button 
-                onClick={() => setTotalTiles(90)}
-                className={`flex-1 py-2 rounded-lg font-bold text-xs sm:text-sm transition-all ${totalTiles === 90 ? 'bg-purple-600 text-white shadow-lg' : 'text-slate-400 hover:text-white'}`}
-            >
-                LARGO (90)
+                NORMAL (50)
             </button>
           </div>
 
-          <div className="flex gap-2 mb-6">
+          <div className="mb-6 space-y-4">
             <input 
               type="text" 
               value={newPlayerName}
               onChange={(e) => setNewPlayerName(e.target.value)}
-              placeholder="Nombre..."
-              className="flex-1 p-4 rounded-xl bg-slate-900 border border-slate-700 text-white text-lg focus:outline-none focus:border-yellow-500 transition-colors"
+              placeholder="Escribe tu nombre..."
+              className="w-full p-4 rounded-xl bg-slate-900 border border-slate-700 text-white text-lg focus:outline-none focus:border-yellow-500 transition-colors"
             />
-            <button onClick={addPlayer} className="bg-blue-600 p-4 rounded-xl hover:bg-blue-500 transition-transform active:scale-95 shadow-lg shadow-blue-500/30">
-              <UserPlus size={28} />
+            
+            <p className="text-slate-400 text-xs font-bold uppercase tracking-widest text-center">Elige tu Personaje</p>
+            
+            <div className="grid grid-cols-5 gap-2">
+              {CHARACTERS.map((char) => {
+                const isTaken = players.some(p => p.character.id === char.id);
+                const isSelected = selectedCharId === char.id;
+                
+                return (
+                  <button 
+                    key={char.id}
+                    disabled={isTaken}
+                    onClick={() => setSelectedCharId(char.id)}
+                    className={`
+                      relative aspect-square rounded-xl p-1 flex items-center justify-center transition-all
+                      ${isTaken ? 'opacity-30 grayscale cursor-not-allowed' : 'hover:scale-110 cursor-pointer'}
+                      ${isSelected ? 'bg-yellow-500 scale-110 shadow-lg ring-2 ring-yellow-300' : 'bg-slate-700'}
+                    `}
+                  >
+                    <div className="w-8 h-8 pointer-events-none">
+                      {char.render()}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+
+            <button 
+                onClick={addPlayer} 
+                disabled={!newPlayerName || !selectedCharId}
+                className={`w-full p-4 rounded-xl font-bold flex items-center justify-center gap-2 transition-all ${(!newPlayerName || !selectedCharId) ? 'bg-slate-700 text-slate-500' : 'bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-500/30'}`}
+            >
+              <UserPlus size={24} /> Agregar Jugador
             </button>
           </div>
-          <div className="space-y-3 mb-8 max-h-60 overflow-y-auto pr-2 custom-scrollbar">
+
+          <div className="space-y-3 mb-8">
             {players.map((p) => (
-              <div key={p.id} className="flex items-center justify-between bg-slate-700/50 p-3 px-5 rounded-xl border-l-8 transition-all hover:translate-x-1" style={{ borderColor: p.color }}>
+              <div key={p.id} className="flex items-center justify-between bg-slate-700/50 p-3 px-5 rounded-xl border-l-8 transition-all hover:translate-x-1" style={{ borderColor: p.character.color }}>
                 <span className="font-bold text-lg text-white">{p.name}</span>
-                <span className="text-2xl filter drop-shadow-md animate-bounce">{p.avatar}</span>
+                <div className="w-8 h-8">{p.character.render()}</div>
               </div>
             ))}
-            {players.length === 0 && <p className="text-center text-slate-500 py-4 italic">Añade jugadores para empezar...</p>}
+            {players.length === 0 && <p className="text-center text-slate-500 py-4 italic text-sm">Ingresa nombre y personaje arriba</p>}
           </div>
           
           {localStorage.getItem('que-descontrol-state') && players.length === 0 && (
@@ -870,11 +954,11 @@ export default function App() {
 
         <div className="absolute top-0 left-0 w-full p-4 z-40 flex justify-between items-start pointer-events-none">
             <div className="bg-slate-900/90 backdrop-blur-md px-5 py-3 rounded-2xl border border-white/10 shadow-xl flex items-center gap-3 animate-in slide-in-from-top-10">
-                <span className="text-4xl animate-bounce">{players[turnIndex]?.avatar}</span>
+                <div className="w-12 h-12 animate-bounce">{players[turnIndex]?.character.render()}</div>
                 <div>
                     <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest mb-0.5">Turno actual</p>
                     {players[turnIndex] && (
-                        <h2 className="text-2xl font-black leading-none" style={{ color: players[turnIndex].color }}>
+                        <h2 className="text-2xl font-black leading-none" style={{ color: players[turnIndex].character.color }}>
                             {players[turnIndex].name}
                         </h2>
                     )}
@@ -926,9 +1010,9 @@ export default function App() {
                         key={p.id} 
                         x={tile.x} 
                         y={tile.y} 
-                        color={p.color} 
+                        color={p.character.color} 
                         isActive={i === turnIndex}
-                        avatar={p.avatar}
+                        character={p.character}
                     />
                 );
             })}
