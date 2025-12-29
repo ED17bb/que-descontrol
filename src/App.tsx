@@ -405,7 +405,7 @@ export default function App() {
   const [selectedCharId, setSelectedCharId] = useState<string | null>(null);
   const [totalTiles, setTotalTiles] = useState(50);
   const [isPortrait, setIsPortrait] = useState(false);
-  const [boardImage, setBoardImage] = useState<string | null>(null); // NUEVO ESTADO PARA IMAGEN
+  const [boardImage, setBoardImage] = useState<string | null>(null);
 
   // NUEVA FUNCIÓN PARA CARGAR IMAGEN
   const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -441,7 +441,7 @@ export default function App() {
                     setTurnIndex(p.turnIndex || 0);
                     setTotalTiles(p.totalTiles || 50);
                     setLastLog(p.lastLog || "");
-                    setBoardImage(p.boardImage || null); // Cargar imagen guardada
+                    setBoardImage(p.boardImage || null);
                     if (p.gameState === 'playing') setView('game');
                 }
             } catch (e) { console.error(e); }
@@ -605,7 +605,10 @@ export default function App() {
     .animate-shake { animation: shake 0.4s ease-in-out; }
   `;
 
-  if (isPortrait) {
+  // --- VISTAS ---
+
+  // PANTALLA "GIRA TU MÓVIL" (SOLO EN EL JUEGO)
+  if (isPortrait && view === 'game') {
     return (
       <div className="h-screen bg-black text-white flex flex-col items-center justify-center p-8 text-center animate-in fade-in">
         <Smartphone className="w-24 h-24 mb-6 animate-spin-slow text-yellow-400" />
@@ -616,6 +619,7 @@ export default function App() {
     );
   }
 
+  // MENÚ
   if (view === 'menu') {
     return (
       <div className="h-screen bg-slate-900 text-white flex items-center justify-center p-6 relative overflow-hidden">
@@ -640,7 +644,7 @@ export default function App() {
                     className="absolute inset-0 opacity-0 cursor-pointer z-10"
                 />
                 <button className={`w-full py-4 rounded-xl border-2 border-dashed flex items-center justify-center gap-2 font-bold transition-all ${boardImage ? 'border-green-500 text-green-400 bg-green-900/20' : 'border-slate-600 text-slate-400 group-hover:border-white group-hover:text-white'}`}>
-                    {boardImage ? <><ImageIcon size={20} /> Tablero Personalizado Cargado</> : <><Upload size={20} /> 🎨 Cargar Tablero (Imagen)</>}
+                    {boardImage ? <><ImageIcon size={20} /> Tablero Cargado</> : <><Upload size={20} /> 🎨 Cargar Tablero (Imagen)</>}
                 </button>
             </div>
 
@@ -665,10 +669,10 @@ export default function App() {
 
   if (view === 'add-players') {
     return (
-      <div className="h-screen bg-slate-900 text-white p-8 relative flex gap-8 items-start justify-center">
+      <div className="h-screen bg-slate-900 text-white p-8 relative flex flex-col md:flex-row gap-8 items-start justify-center overflow-auto">
         <button onClick={() => setView('menu')} className="absolute top-6 left-6 p-3 bg-slate-800 rounded-full hover:bg-slate-700"><ArrowLeft /></button>
         
-        <div className="w-1/2 max-w-md bg-slate-800/50 p-8 rounded-3xl border border-white/5 h-full flex flex-col justify-center">
+        <div className="w-full md:w-1/2 max-w-md bg-slate-800/50 p-8 rounded-3xl border border-white/5 flex flex-col justify-center mt-16 md:mt-0">
             <h2 className="text-3xl font-black mb-6">NUEVO JUGADOR</h2>
             <input type="text" value={newPlayerName} onChange={(e) => setNewPlayerName(e.target.value)} placeholder="Nombre..." className="w-full p-4 bg-slate-900 rounded-xl border border-slate-700 text-white text-lg focus:border-yellow-500 outline-none mb-6" />
             <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">Elige un Avatar</p>
@@ -688,7 +692,7 @@ export default function App() {
             </button>
         </div>
 
-        <div className="w-1/3 h-full bg-slate-900 p-6 rounded-3xl border border-white/5 overflow-y-auto">
+        <div className="w-full md:w-1/3 bg-slate-900 p-6 rounded-3xl border border-white/5 overflow-y-auto max-h-[60vh] md:max-h-full">
             <h3 className="text-slate-500 font-bold text-sm uppercase tracking-widest mb-4 sticky top-0 bg-slate-900 py-2">Lista ({players.length})</h3>
             <div className="space-y-3">
                 {players.map(p => (
@@ -707,6 +711,7 @@ export default function App() {
     );
   }
 
+  // --- RENDERIZADO DEL JUEGO CON VISTA 3D CSS ---
   return (
     <div className={`relative w-full h-screen overflow-hidden font-sans select-none text-white transition-colors duration-500 ${screenFlash || ''}`} 
          style={{ background: `radial-gradient(circle at center, rgba(${15 + gameProgress * 60}, ${23 - gameProgress * 20}, ${42 - gameProgress * 40}, 1) 0%, rgba(${15 + gameProgress * 20}, ${23 - gameProgress * 10}, ${42 - gameProgress * 30}, 1) 100%)` }}>
@@ -719,7 +724,7 @@ export default function App() {
                     <div className="flex items-center justify-center gap-4">
                         <div className="w-20 h-20 rounded-full flex items-center justify-center border-4 border-slate-900 shadow-lg" style={{ backgroundColor: currentEvent.typeData.color }}>
                             <currentEvent.typeData.icon size={40} className="text-white animate-pulse" />
-                            <AlertTriangle className="absolute top-0 right-0 w-4 h-4 opacity-0" /> {/* Hack para usar import */}
+                            <AlertTriangle className="absolute top-0 right-0 w-4 h-4 opacity-0" />
                         </div>
                         <div className="text-left">
                             <h3 className="text-4xl font-black uppercase italic">{currentEvent.typeData.type}</h3>
@@ -778,10 +783,8 @@ export default function App() {
             )}
         </div>
 
-        {/* ESCENA 3D */}
         <div className="absolute inset-0 flex items-center justify-center scene-3d overflow-visible">
             <div className="board-3d relative w-0 h-0 transition-transform duration-1000 cubic-bezier(0.25, 1, 0.5, 1)" style={{ transform: `rotateX(55deg) rotateZ(-45deg) translate(${boardTransform.x}px, ${boardTransform.y}px)` }}>
-                {/* IMAGEN DE TABLERO PERSONALIZADO (ALFOMBRA) */}
                 {boardImage && (
                     <img 
                         src={boardImage} 
