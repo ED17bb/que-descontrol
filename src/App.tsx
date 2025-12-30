@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
-import { UserPlus, Play, RotateCcw, Skull, HelpCircle, Swords, PartyPopper, Zap, AlertTriangle, Volume2, VolumeX, Trophy, ArrowRight, Trash2, Users, Smartphone, X, ArrowLeft } from 'lucide-react';
+import { UserPlus, Play, Skull, HelpCircle, Swords, PartyPopper, Zap, Trophy, Trash2, Users, Smartphone, X, ArrowLeft } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
 // --- CONFIGURACIÓN & DATOS ---
@@ -71,6 +71,7 @@ const Roulette = ({ onSpinComplete }: { onSpinComplete: (num: number) => void })
     
     const randomValue = Math.floor(Math.random() * 6) + 1;
     const segmentAngle = 360 / 6;
+    // Ajuste para caer en el centro del segmento
     const targetAngle = 1800 + (6 - randomValue) * segmentAngle + segmentAngle / 2; 
     
     setRotation(targetAngle);
@@ -88,21 +89,50 @@ const Roulette = ({ onSpinComplete }: { onSpinComplete: (num: number) => void })
           <>
             <h2 className="text-xl font-black text-black mb-4 uppercase tracking-wider">¡GIRA!</h2>
             <div className="relative w-48 h-48 mb-6">
+              {/* Flecha indicadora */}
               <div className="absolute -top-3 left-1/2 -translate-x-1/2 z-20 w-0 h-0 border-l-[10px] border-l-transparent border-r-[10px] border-r-transparent border-t-[20px] border-t-black drop-shadow-md" />
+              
+              {/* Rueda */}
               <div 
                 className="w-full h-full rounded-full border-4 border-black overflow-hidden relative transition-transform duration-[3000ms] cubic-bezier(0.15, 0.80, 0.15, 1)"
                 style={{ transform: `rotate(${rotation}deg)` }}
               >
+                {/* Segmentos */}
                 <div className="w-full h-full rounded-full" style={{ 
-                  background: `conic-gradient(#ef4444 0deg 60deg, #3b82f6 60deg 120deg, #eab308 120deg 180deg, #22c55e 180deg 240deg, #a855f7 240deg 300deg, #f97316 300deg 360deg)` 
+                  background: `conic-gradient(
+                    #ef4444 0deg 60deg, 
+                    #3b82f6 60deg 120deg, 
+                    #eab308 120deg 180deg, 
+                    #22c55e 180deg 240deg, 
+                    #a855f7 240deg 300deg, 
+                    #f97316 300deg 360deg
+                  )` 
                 }}></div>
+                
+                {/* Números sobre los segmentos */}
                 {[1, 2, 3, 4, 5, 6].map((num, i) => (
-                   <span key={num} className="absolute text-xl font-black text-white drop-shadow-md" style={{ top: '15%', left: '50%', transform: `translateX(-50%) rotate(${i * 60}deg) translateY(-10px)`, transformOrigin: '0 85px' }}>{num}</span>
+                   <span 
+                    key={num}
+                    className="absolute text-xl font-black text-white drop-shadow-md"
+                    style={{ 
+                      top: '15%', left: '50%', 
+                      transform: `translateX(-50%) rotate(${i * 60}deg) translateY(-10px)`, 
+                      transformOrigin: '0 85px' 
+                    }}
+                   >
+                     {num}
+                   </span>
                 ))}
+                
+                {/* Centro decorativo */}
                 <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-6 h-6 bg-white rounded-full border-4 border-black" />
               </div>
             </div>
-            <button onClick={spin} disabled={spinning} className="w-full py-3 bg-yellow-400 hover:bg-yellow-300 text-black border-2 border-black font-black text-lg rounded-xl shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-transform active:translate-y-1 active:shadow-none disabled:opacity-50">
+            <button 
+              onClick={spin}
+              disabled={spinning}
+              className="w-full py-3 bg-yellow-400 hover:bg-yellow-300 text-black border-2 border-black font-black text-lg rounded-xl shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-transform active:translate-y-1 active:shadow-none disabled:opacity-50"
+            >
               {spinning ? '...' : 'GIRAR'}
             </button>
           </>
@@ -110,7 +140,12 @@ const Roulette = ({ onSpinComplete }: { onSpinComplete: (num: number) => void })
           <div className="text-center animate-in zoom-in duration-300 w-full">
              <p className="text-slate-500 font-bold uppercase text-xs mb-2">RESULTADO</p>
              <div className="text-8xl font-black text-black mb-6">{result}</div>
-             <button onClick={() => onSpinComplete(result)} className="w-full py-3 bg-green-500 hover:bg-green-400 text-white border-2 border-black font-black text-lg rounded-xl shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-transform active:translate-y-1 active:shadow-none">CONTINUAR</button>
+             <button 
+               onClick={() => onSpinComplete(result)}
+               className="w-full py-3 bg-green-500 hover:bg-green-400 text-white border-2 border-black font-black text-lg rounded-xl shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-transform active:translate-y-1 active:shadow-none"
+             >
+               CONTINUAR
+             </button>
           </div>
         )}
       </div>
@@ -120,6 +155,7 @@ const Roulette = ({ onSpinComplete }: { onSpinComplete: (num: number) => void })
 
 // --- APP PRINCIPAL ---
 export default function App() {
+  // ESTADOS
   const [view, setView] = useState<'menu' | 'add-players' | 'game' | 'win'>('menu');
   const [players, setPlayers] = useState<Player[]>([]);
   const [turnIndex, setTurnIndex] = useState(0);
@@ -130,6 +166,8 @@ export default function App() {
   const [phase, setPhase] = useState<'ready' | 'turn_start' | 'spinning' | 'moving' | 'event'>('ready');
   const [stepsToMove, setStepsToMove] = useState(0);
   const [currentEvent, setCurrentEvent] = useState<any>(null); // eslint-disable-line @typescript-eslint/no-explicit-any
+
+  // Form States
   const [newPlayerName, setNewPlayerName] = useState('');
 
   // --- RESPONSIVENESS & AUDIO ---
@@ -143,6 +181,7 @@ export default function App() {
   const playSound = (type: 'click' | 'step' | 'win') => {
     if (!audioEnabled) return;
     try {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const AudioContext = (window as any).AudioContext || (window as any).webkitAudioContext;
         if (!AudioContext) return;
         const ctx = new AudioContext();
@@ -150,8 +189,8 @@ export default function App() {
         const gain = ctx.createGain();
         osc.connect(gain);
         gain.connect(ctx.destination);
-        const now = ctx.currentTime;
         
+        const now = ctx.currentTime;
         if (type === 'click') {
             osc.frequency.setValueAtTime(600, now);
             osc.frequency.exponentialRampToValueAtTime(100, now + 0.1);
