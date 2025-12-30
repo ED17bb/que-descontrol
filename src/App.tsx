@@ -1,5 +1,5 @@
-import { useState, useMemo, useEffect, useRef } from 'react';
-import { UserPlus, Play, RotateCcw, Skull, HelpCircle, Swords, PartyPopper, Zap, AlertTriangle, Volume2, VolumeX, Trophy, ArrowRight, Trash2, Users, Smartphone, X } from 'lucide-react';
+import { useState, useMemo, useEffect } from 'react';
+import { UserPlus, Play, Skull, HelpCircle, Swords, PartyPopper, Zap, AlertTriangle, Trophy, Trash2, Users, Smartphone, X, ArrowLeft } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
 // --- CONFIGURACIÓN & DATOS ---
@@ -68,20 +68,16 @@ const Roulette = ({ onSpinComplete }: { onSpinComplete: (num: number) => void })
     if (spinning || result) return;
     setSpinning(true);
     
-    // Calcular giro: Mínimo 5 vueltas (1800deg) + aleatorio
-    // La ruleta tiene 6 segmentos. Cada uno es de 60 grados.
-    // 1 está arriba.
     const randomValue = Math.floor(Math.random() * 6) + 1;
     const segmentAngle = 360 / 6;
-    // Ajuste para caer en el centro del segmento
-    const targetAngle = 1800 + (6 - randomValue) * segmentAngle + segmentAngle / 2; // + vueltas extra
+    const targetAngle = 1800 + (6 - randomValue) * segmentAngle + segmentAngle / 2; 
     
     setRotation(targetAngle);
 
     setTimeout(() => {
       setResult(randomValue);
       setSpinning(false);
-    }, 3000); // Duración del giro
+    }, 3000); 
   };
 
   return (
@@ -99,7 +95,7 @@ const Roulette = ({ onSpinComplete }: { onSpinComplete: (num: number) => void })
                 className="w-full h-full rounded-full border-8 border-slate-700 overflow-hidden shadow-xl relative transition-transform duration-[3000ms] cubic-bezier(0.15, 0.80, 0.15, 1)"
                 style={{ transform: `rotate(${rotation}deg)` }}
               >
-                {/* Segmentos (CSS Conic Gradient es más fácil para esto) */}
+                {/* Segmentos */}
                 <div className="w-full h-full rounded-full" style={{ 
                   background: `conic-gradient(
                     #ef4444 0deg 60deg, 
@@ -118,8 +114,8 @@ const Roulette = ({ onSpinComplete }: { onSpinComplete: (num: number) => void })
                     className="absolute text-2xl font-black text-white drop-shadow-md"
                     style={{ 
                       top: '15%', left: '50%', 
-                      transform: `translateX(-50%) rotate(${i * 60}deg) translateY(-20px)`, // Ajuste polar simplificado visualmente
-                      transformOrigin: '0 110px' // Radio aprox
+                      transform: `translateX(-50%) rotate(${i * 60}deg) translateY(-20px)`, 
+                      transformOrigin: '0 110px' 
                     }}
                    >
                      {num}
@@ -162,12 +158,12 @@ export default function App() {
   const [players, setPlayers] = useState<Player[]>([]);
   const [turnIndex, setTurnIndex] = useState(0);
   const [isPortrait, setIsPortrait] = useState(false);
-  const [audioEnabled, setAudioEnabled] = useState(true);
+  const audioEnabled = true; // Audio siempre activo por defecto
   
   // Game Flow States
   const [phase, setPhase] = useState<'turn_start' | 'spinning' | 'moving' | 'event'>('turn_start');
   const [stepsToMove, setStepsToMove] = useState(0);
-  const [currentEvent, setCurrentEvent] = useState<any>(null);
+  const [currentEvent, setCurrentEvent] = useState<any>(null); // eslint-disable-line @typescript-eslint/no-explicit-any
 
   // Form States
   const [newPlayerName, setNewPlayerName] = useState('');
@@ -183,6 +179,7 @@ export default function App() {
   const playSound = (type: 'click' | 'step' | 'win') => {
     if (!audioEnabled) return;
     try {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const AudioContext = (window as any).AudioContext || (window as any).webkitAudioContext;
         if (!AudioContext) return;
         const ctx = new AudioContext();
@@ -205,7 +202,9 @@ export default function App() {
             gain.gain.linearRampToValueAtTime(0, now + 0.05);
             osc.start(now); osc.stop(now + 0.05);
         }
-    } catch(e) {}
+    } catch(e) {
+      // Ignorar errores de audio
+    }
   };
 
   // --- GENERACIÓN DE TABLERO 2D (Path Serpiente SVG) ---
@@ -435,12 +434,12 @@ export default function App() {
           {/* TARJETA DE EVENTO */}
           {phase === 'event' && currentEvent && (
               <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-md p-4 animate-in zoom-in">
-                 <div className="w-full max-w-lg bg-slate-900 rounded-3xl border-4 p-8 text-center shadow-2xl relative" style={{ borderColor: currentEvent.typeData.color }}>
+                 <div className="w-full max-w-lg bg-slate-900 rounded-3xl border-4 p-8 text-center shadow-2xl relative" style={{ borderColor: currentEvent.tileType.color }}>
                      <div className="absolute -top-10 left-1/2 -translate-x-1/2 w-20 h-20 rounded-full flex items-center justify-center border-4 border-slate-900 shadow-lg bg-slate-800">
-                         <currentEvent.typeData.icon size={40} style={{ color: currentEvent.typeData.color }} />
+                         <currentEvent.tileType.icon size={40} style={{ color: currentEvent.tileType.color }} />
                      </div>
                      <div className="mt-8 mb-6">
-                        <h3 className="text-4xl font-black uppercase italic mb-1" style={{ color: currentEvent.typeData.color }}>{currentEvent.typeData.label}</h3>
+                        <h3 className="text-4xl font-black uppercase italic mb-1" style={{ color: currentEvent.tileType.color }}>{currentEvent.tileType.label}</h3>
                      </div>
                      <div className="bg-slate-800/50 p-6 rounded-2xl border border-white/10 mb-6">
                          <p className="text-2xl font-medium leading-relaxed">{currentEvent.data.text}</p>
