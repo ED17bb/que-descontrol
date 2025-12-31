@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
-import { UserPlus, Play, Skull, HelpCircle, Swords, PartyPopper, Zap, Trophy, Trash2, Users, X, ArrowLeft, RotateCcw, AlertTriangle } from 'lucide-react';
+import { UserPlus, Play, Skull, HelpCircle, Swords, PartyPopper, Zap, Trophy, Trash2, Users, X, ArrowLeft, RotateCcw, AlertTriangle, ArrowDown } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
 // --- CONFIGURACIÓN ---
@@ -29,6 +29,7 @@ interface TileData {
   isCorner: boolean; 
 }
 
+// Colores vibrantes
 const TILE_TYPES: TileType[] = [
   { id: 'PELIGRO', color: '#ff5252', icon: Skull, label: 'Peligro' },     
   { id: 'TRIVIA', color: '#448aff', icon: HelpCircle, label: 'Trivia' },  
@@ -61,143 +62,42 @@ const EVENTS_DB: Record<string, { text: string; actionText?: string; penalty?: n
   ]
 };
 
-// --- COMPONENTE: RULETA ---
-const Roulette = ({ onSpinComplete }: { onSpinComplete: (num: number) => void }) => {
-  const [spinning, setSpinning] = useState(false);
-  const [rotation, setRotation] = useState(0);
-  const [result, setResult] = useState<number | null>(null);
-
-  const spin = () => {
-    if (spinning || result) return;
-    setSpinning(true);
-    
-    const randomValue = Math.floor(Math.random() * 6) + 1;
-    const segmentAngle = 360 / 6;
-    const targetAngle = 1800 + (6 - randomValue) * segmentAngle + segmentAngle / 2; 
-    
-    setRotation(targetAngle);
-
-    setTimeout(() => {
-      setResult(randomValue);
-      setSpinning(false);
-    }, 3000); 
-  };
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-      <div className="bg-white border-4 border-black rounded-3xl p-5 flex flex-col items-center shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] w-64 animate-in zoom-in">
-        {!result ? (
-          <>
-            <h2 className="text-lg font-black text-black mb-4 uppercase tracking-wider">¡GIRA!</h2>
-            <div className="relative w-40 h-40 mb-5">
-              <div className="absolute -top-3 left-1/2 -translate-x-1/2 z-20 w-0 h-0 border-l-[10px] border-l-transparent border-r-[10px] border-r-transparent border-t-[18px] border-t-black drop-shadow-md" />
-              <div 
-                className="w-full h-full rounded-full border-4 border-black overflow-hidden relative transition-transform duration-[3000ms] cubic-bezier(0.15, 0.80, 0.15, 1)"
-                style={{ transform: `rotate(${rotation}deg)` }}
-              >
-                <div className="w-full h-full rounded-full" style={{ 
-                  background: `conic-gradient(
-                    #f3f4f6 0deg 60deg, 
-                    #d1d5db 60deg 120deg, 
-                    #f3f4f6 120deg 180deg, 
-                    #d1d5db 180deg 240deg, 
-                    #f3f4f6 240deg 300deg, 
-                    #d1d5db 300deg 360deg
-                  )` 
-                }}></div>
-                {[1, 2, 3, 4, 5, 6].map((num, i) => (
-                   <span key={num} className="absolute text-lg font-black text-black" style={{ top: '12%', left: '50%', transform: `translateX(-50%) rotate(${i * 60}deg) translateY(-10px)`, transformOrigin: '0 70px' }}>{num}</span>
-                ))}
-                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-6 h-6 bg-black rounded-full shadow-inner" />
-              </div>
-            </div>
-            <button onClick={spin} disabled={spinning} className="w-full py-2 bg-black text-white font-black text-lg rounded-xl shadow-lg transition-transform active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed">
-              {spinning ? '...' : 'GIRAR'}
-            </button>
-          </>
-        ) : (
-          <div className="text-center w-full">
-             <p className="text-slate-500 font-bold uppercase text-xs mb-1">SALIO EL</p>
-             <div className="text-7xl font-black text-black mb-4">{result}</div>
-             <button onClick={() => onSpinComplete(result)} className="w-full py-2 bg-green-500 hover:bg-green-400 text-white border-2 border-black font-black text-lg rounded-xl shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-transform active:translate-y-1 active:shadow-none">AVANZAR</button>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-};
-
-// --- APP ---
+// --- APP PRINCIPAL ---
 export default function App() {
   const [view, setView] = useState<'menu' | 'add-players' | 'game' | 'win'>('menu');
   const [players, setPlayers] = useState<Player[]>([]);
   const [turnIndex, setTurnIndex] = useState(0);
   
-  const [phase, setPhase] = useState<'ready' | 'turn_start' | 'spinning' | 'moving' | 'event'>('ready');
+  const [phase, setPhase] = useState<'ready' | 'turn_start' | 'moving' | 'event'>('ready');
   const [stepsToMove, setStepsToMove] = useState(0);
   const [currentEvent, setCurrentEvent] = useState<any>(null); // eslint-disable-line @typescript-eslint/no-explicit-any
   const [newPlayerName, setNewPlayerName] = useState('');
+  
+  // Estado local para la animación de la barra de números
+  const [diceRolling, setDiceRolling] = useState(false);
+  const [diceHighlight, setDiceHighlight] = useState(0); // Índice 0-5
 
-  const playSound = (type: 'click' | 'step') => {
-    try {
-        const AudioContext = (window as any).AudioContext || (window as any).webkitAudioContext;
-        if (!AudioContext) return;
-        const ctx = new AudioContext();
-        const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
-        osc.connect(gain);
-        gain.connect(ctx.destination);
-        const now = ctx.currentTime;
-        if (type === 'click') {
-            osc.frequency.setValueAtTime(600, now);
-            osc.frequency.exponentialRampToValueAtTime(100, now + 0.1);
-            gain.gain.setValueAtTime(0.1, now);
-            gain.gain.linearRampToValueAtTime(0, now + 0.1);
-        } else {
-            osc.type = 'triangle';
-            osc.frequency.setValueAtTime(300, now);
-            gain.gain.setValueAtTime(0.05, now);
-            gain.gain.linearRampToValueAtTime(0, now + 0.05);
-        }
-        osc.start(now); osc.stop(now + 0.1);
-    } catch(e) {}
-  };
-
-  // --- GENERACIÓN TABLERO VERTICAL SERPIENTE ---
+  // --- GENERACIÓN TABLERO ---
   const { tilesData, bridges } = useMemo(() => {
     const tiles: TileData[] = [];
     const bridgesData: { x: number, y: number, color: string }[] = [];
-    
     const cols = 5;
-    
-    const startX = 0; 
-    const startY = 0;
+    const startX = 0; const startY = 0;
 
     for (let i = 0; i < TOTAL_TILES; i++) {
       const row = Math.floor(i / cols);
       const colInRow = i % cols;
-      // Serpiente: filas pares -> derecha, impares <- izquierda
       const isEvenRow = row % 2 === 0;
       const col = isEvenRow ? colInRow : (cols - 1 - colInRow);
       
       const x = startX + col * TILE_SIZE;
       const y = startY + row * (TILE_SIZE + ROW_GAP);
-      
-      const type = i === TOTAL_TILES - 1 
-        ? { id: 'META', color: '#ffffff', icon: Trophy, label: 'Final' } 
-        : TILE_TYPES[i % TILE_TYPES.length];
-
-      // PUENTES VERTICALES
+      const type = i === TOTAL_TILES - 1 ? { id: 'META', color: '#ffffff', icon: Trophy, label: 'Final' } : TILE_TYPES[i % TILE_TYPES.length];
       const isEndOfRow = (colInRow === cols - 1);
       
       if (isEndOfRow && i < TOTAL_TILES - 1) {
-          bridgesData.push({ 
-              x: x, 
-              y: y + TILE_SIZE, 
-              color: type.color 
-          });
+          bridgesData.push({ x: x, y: y + TILE_SIZE, color: type.color });
       }
-
       tiles.push({ x, y, type, index: i, isCorner: isEndOfRow });
     }
     return { tilesData: tiles, bridges: bridgesData };
@@ -208,12 +108,10 @@ export default function App() {
     const colors = ['#ef4444', '#3b82f6', '#eab308', '#a855f7', '#f97316', '#10b981'];
     setPlayers([...players, { id: Date.now(), name: newPlayerName, positionIndex: 0, color: colors[players.length % colors.length] }]);
     setNewPlayerName('');
-    playSound('click');
   };
 
   const handleRemovePlayer = (id: number) => {
     setPlayers(players.filter(p => p.id !== id));
-    playSound('click');
   };
 
   const startGame = () => {
@@ -228,6 +126,33 @@ export default function App() {
     setPhase('ready');
   };
 
+  // --- LÓGICA DE DADO (BARRA) ---
+  const handleRollClick = () => {
+      if (diceRolling) return;
+      setDiceRolling(true);
+      
+      let steps = 0;
+      const maxSteps = 15 + Math.floor(Math.random() * 10); // Duración aleatoria
+      
+      const interval = setInterval(() => {
+          setDiceHighlight(Math.floor(Math.random() * 6));
+          steps++;
+          if (steps >= maxSteps) {
+              clearInterval(interval);
+              // Resultado final
+              const finalResult = Math.floor(Math.random() * 6) + 1;
+              setDiceHighlight(finalResult - 1);
+              
+              setTimeout(() => {
+                  setStepsToMove(finalResult);
+                  setPhase('moving');
+                  setDiceRolling(false);
+              }, 800); // Pausa para ver el número
+          }
+      }, 100);
+  };
+
+  // Movimiento
   useEffect(() => {
     if (phase === 'moving' && stepsToMove > 0) {
         const timer = setTimeout(() => {
@@ -236,7 +161,6 @@ export default function App() {
                 const player = newPlayers[turnIndex];
                 if (player.positionIndex >= TOTAL_TILES - 1) return newPlayers; 
                 player.positionIndex += 1;
-                playSound('step');
                 return newPlayers;
             });
             setStepsToMove(s => s - 1);
@@ -257,11 +181,6 @@ export default function App() {
         }, 500);
     }
   }, [phase, stepsToMove, players, turnIndex, tilesData]);
-
-  const handleSpinComplete = (num: number) => {
-      setStepsToMove(num);
-      setPhase('moving'); 
-  };
 
   const handleEventClose = (moveBonus: number = 0) => {
       if (moveBonus !== 0) {
@@ -358,17 +277,8 @@ export default function App() {
                      height: Math.ceil(TOTAL_TILES/5) * (TILE_SIZE + ROW_GAP) 
                  }}>
                     
-                    {/* PUENTES (Escaleras de bajada) */}
                     {bridges.map((bridge, i) => (
-                        <div key={i} className="absolute z-0 flex flex-col items-center justify-center" 
-                             style={{ 
-                                 left: bridge.x, 
-                                 top: bridge.y, 
-                                 width: TILE_SIZE, 
-                                 height: ROW_GAP + 5, // Un poco extra para solapar
-                             }} 
-                        >
-                            {/* Diseño de escalera visual */}
+                        <div key={i} className="absolute z-0 flex flex-col items-center justify-center" style={{ left: bridge.x, top: bridge.y, width: TILE_SIZE, height: ROW_GAP + 5 }}>
                             <div className="w-1/2 h-full border-x-4 border-black/20" />
                             <div className="absolute top-1/2 w-3/4 h-1 bg-black/20" />
                         </div>
@@ -379,13 +289,9 @@ export default function App() {
                             key={tile.index} 
                             className="absolute flex items-center justify-center box-border z-10 shadow-[4px_4px_0px_0px_rgba(0,0,0,0.2)]"
                             style={{ 
-                                left: tile.x,
-                                top: tile.y,
-                                width: TILE_SIZE,
-                                height: TILE_SIZE,
+                                left: tile.x, top: tile.y, width: TILE_SIZE, height: TILE_SIZE,
                                 backgroundColor: tile.type.id === 'META' ? 'white' : tile.type.color,
-                                border: '3px solid black', 
-                                borderRadius: '8px', 
+                                border: '3px solid black', borderRadius: '8px', 
                             }}
                         >
                             {tile.type.id === 'META' ? <Trophy className="text-yellow-500 w-8 h-8" /> : <span className="text-white/80 font-black text-xl drop-shadow-md">{tile.index + 1}</span>}
@@ -401,7 +307,6 @@ export default function App() {
                                 className="absolute w-8 h-8 rounded-full border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,0.5)] transition-all duration-500 ease-in-out z-20 flex items-center justify-center"
                                 style={{ 
                                     backgroundColor: p.color, 
-                                    // Centrar en la casilla + offset
                                     left: tile.x + (TILE_SIZE/2) - 16 + offset, 
                                     top: tile.y + (TILE_SIZE/2) - 16 + offset 
                                 }}
@@ -423,19 +328,46 @@ export default function App() {
               </div>
           )}
 
-          {/* FASE: TURN START */}
+          {/* FASE: TURN START (CON NUEVA BARRA DE DADOS) */}
           {phase === 'turn_start' && (
              <div className="absolute bottom-0 left-0 right-0 p-6 z-40 bg-white/90 backdrop-blur-md border-t-4 border-black rounded-t-3xl animate-in slide-in-from-bottom-10 flex flex-col items-center">
                  <p className="text-gray-500 font-black uppercase tracking-widest text-xs mb-2">TURNO DE</p>
-                 <h2 className="text-3xl font-black mb-4 truncate w-full text-center" style={{ color: activePlayer.color }}>{activePlayer.name}</h2>
-                 <button onClick={() => setPhase('spinning')} className="w-full max-w-sm py-4 bg-blue-500 text-white border-2 border-black font-black text-xl rounded-xl hover:bg-blue-400 transition-transform active:translate-y-1 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] active:shadow-none animate-bounce">
-                    TIRAR RULETA
-                 </button>
+                 <h2 className="text-3xl font-black mb-6 truncate w-full text-center" style={{ color: activePlayer.color }}>{activePlayer.name}</h2>
+                 
+                 {/* COMPONENTE DE BARRA DE DADOS INTEGRADO */}
+                 <div className="w-full max-w-xs flex flex-col items-center gap-4 mb-2">
+                     <div className="relative w-full h-12">
+                         {/* Flecha Animada */}
+                         <ArrowDown 
+                            className="absolute text-red-600 w-10 h-10 transition-all duration-100 ease-out z-10 drop-shadow-md" 
+                            style={{ 
+                                left: `${(diceHighlight * 16.66) + 8.33}%`, 
+                                transform: 'translateX(-50%)',
+                                top: '-20px'
+                            }} 
+                            fill="currentColor"
+                        />
+                         
+                         {/* Barra de Números */}
+                         <div className="flex w-full border-4 border-black rounded-xl overflow-hidden bg-white shadow-inner">
+                            {[1,2,3,4,5,6].map((num, i) => (
+                                <div key={num} className={`flex-1 h-12 flex items-center justify-center border-r-2 last:border-r-0 border-black font-black text-xl transition-colors ${i === diceHighlight ? 'bg-yellow-300' : 'bg-white'}`}>
+                                    {num}
+                                </div>
+                            ))}
+                         </div>
+                     </div>
+                     
+                     <button 
+                        onClick={handleRollClick}
+                        disabled={diceRolling}
+                        className="w-full py-4 bg-blue-500 text-white border-2 border-black font-black text-xl rounded-xl hover:bg-blue-400 transition-transform active:translate-y-1 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] active:shadow-none disabled:opacity-50 disabled:cursor-not-allowed"
+                     >
+                        {diceRolling ? '...' : 'TIRAR'}
+                     </button>
+                 </div>
              </div>
           )}
-
-          {/* OVERLAYS */}
-          {phase === 'spinning' && <Roulette onSpinComplete={handleSpinComplete} />}
 
           {phase === 'event' && currentEvent && (
               <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-6 animate-in zoom-in">
