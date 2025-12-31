@@ -1,12 +1,11 @@
 import { useState, useMemo, useEffect } from 'react';
-import { UserPlus, Play, Skull, HelpCircle, Swords, PartyPopper, Zap, Trophy, Trash2, Users, X, ArrowLeft, RotateCcw, AlertTriangle } from 'lucide-react';
+import { UserPlus, Play, Skull, HelpCircle, Swords, PartyPopper, Zap, Trophy, Trash2, Users, Smartphone, X, ArrowLeft, RotateCcw } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
 // --- CONFIGURACIÓN ---
 const TOTAL_TILES = 50;
-// Ajustamos tamaños para móvil vertical
-const TILE_SIZE = 60; 
-const ROW_GAP = 15; 
+const TILE_SIZE = 70; // Tamaño base (se escalará en móviles)
+const ROW_GAP = 30;   // Espacio entre filas
 
 interface Player {
   id: number;
@@ -27,9 +26,10 @@ interface TileData {
   y: number;
   type: TileType;
   index: number;
+  isCorner: boolean; 
 }
 
-// Colores vibrantes
+// Colores vibrantes estilo tablero infantil
 const TILE_TYPES: TileType[] = [
   { id: 'PELIGRO', color: '#ff5252', icon: Skull, label: 'Peligro' },     
   { id: 'TRIVIA', color: '#448aff', icon: HelpCircle, label: 'Trivia' },  
@@ -42,23 +42,23 @@ const EVENTS_DB: Record<string, { text: string; actionText?: string; penalty?: n
   PELIGRO: [
     { text: "Todos cambian de lugar a la izquierda.", penalty: 0 },
     { text: "10 flexiones o retrocede 3.", penalty: -3, actionText: "Fallo: -3" },
-    { text: "El suelo es lava. El último pierde.", penalty: -2, actionText: "Perdedor: -2" },
+    { text: "El suelo es lava. El último en subirse a algo pierde.", penalty: -2, actionText: "Perdedor: -2" },
   ],
   TRIVIA: [
     { text: "¿Capital de Francia?", answer: "París", bonus: 1, actionText: "Acierta: +1" },
-    { text: "¿Lados de un hexágono?", answer: "6", bonus: 1, actionText: "Acierta: +1" },
+    { text: "¿Cuántos lados tiene un hexágono?", answer: "6", bonus: 1, actionText: "Acierta: +1" },
   ],
   CHAMUYO: [
-    { text: "Cuenta un chiste malo.", penalty: -2 },
-    { text: "Envía un audio cantando.", penalty: -3 },
+    { text: "Cuenta un chiste. Si nadie se ríe, retrocede 2.", penalty: -2 },
+    { text: "Envía un audio cantando al grupo de la familia.", penalty: -3 },
   ],
   SUERTE: [
     { text: "Avanza 2 casillas gratis.", bonus: 2 },
     { text: "Te perdiste. Retrocede 1.", penalty: -1 },
   ],
   VS: [
-    { text: "Piedra, Papel o Tijera (Derecha).", penalty: -1, actionText: "Perdedor: -1" },
-    { text: "Miradas fijas (Izquierda).", penalty: 0, actionText: "El que parpadea pierde" },
+    { text: "Piedra, Papel o Tijera con el de la derecha.", penalty: -1, actionText: "Perdedor: -1" },
+    { text: "Miradas fijas con el de la izquierda.", penalty: 0, actionText: "El que parpadea pierde" },
   ]
 };
 
@@ -126,7 +126,7 @@ export default function App() {
   const [view, setView] = useState<'menu' | 'add-players' | 'game' | 'win'>('menu');
   const [players, setPlayers] = useState<Player[]>([]);
   const [turnIndex, setTurnIndex] = useState(0);
-  const audioEnabled = true;
+  const audioEnabled = true; // Audio siempre activo
   
   const [phase, setPhase] = useState<'ready' | 'turn_start' | 'spinning' | 'moving' | 'event'>('ready');
   const [stepsToMove, setStepsToMove] = useState(0);
@@ -134,6 +134,7 @@ export default function App() {
   const [newPlayerName, setNewPlayerName] = useState('');
 
   const playSound = (type: 'click' | 'step') => {
+    if (!audioEnabled) return;
     try {
         const AudioContext = (window as any).AudioContext || (window as any).webkitAudioContext;
         if (!AudioContext) return;
@@ -158,27 +159,25 @@ export default function App() {
     } catch(e) {}
   };
 
-  // --- GENERACIÓN TABLERO VERTICAL ---
+  // --- GENERACIÓN TABLERO (10 COLUMNAS) ---
   const { tilesData, bridges } = useMemo(() => {
     const tiles: TileData[] = [];
     const bridgesData: { x: number, y: number, color: string }[] = [];
     
-    // Configuración VERTICAL: 5 columnas x 10 filas (aprox para 50)
-    const cols = 5;
-    const rows = Math.ceil(TOTAL_TILES / cols);
+    const cols = 10; // 10 columnas como pediste
+    const rows = Math.ceil(TOTAL_TILES / cols); // 5 filas
     
-    // Centrar tablero
     const boardWidth = cols * TILE_SIZE;
     const boardHeight = rows * (TILE_SIZE + ROW_GAP) - ROW_GAP;
     
     const startX = -boardWidth / 2 + TILE_SIZE / 2;
-    // Empezamos desde arriba
     const startY = -boardHeight / 2 + TILE_SIZE / 2;
 
     for (let i = 0; i < TOTAL_TILES; i++) {
       const row = Math.floor(i / cols);
       const colInRow = i % cols;
-      // Serpiente: filas pares -> derecha, impares <- izquierda
+      // Serpiente: Filas pares (0,2,4) -> Izquierda a Derecha
+      // Filas impares (1,3) -> Derecha a Izquierda
       const isEvenRow = row % 2 === 0;
       const col = isEvenRow ? colInRow : (cols - 1 - colInRow);
       
@@ -189,11 +188,11 @@ export default function App() {
         ? { id: 'META', color: '#ffffff', icon: Trophy, label: 'Final' } 
         : TILE_TYPES[i % TILE_TYPES.length];
 
-      // PUENTES VERTICALES
-      // Si es el último de la fila (visual) y no es el final del juego
-      const isEndOfRow = (colInRow === cols - 1);
-      
-      if (isEndOfRow && i < TOTAL_TILES - 1) {
+      // PUENTES: Conectar bajadas
+      // Necesitamos puente si estamos al final visual de la fila y no es el último tile
+      // Fin visual fila par: colInRow == 9
+      // Fin visual fila impar: colInRow == 9 (porque 9 invertido es 0, el extremo izquierdo)
+      if (colInRow === cols - 1 && i < TOTAL_TILES - 1) {
           bridgesData.push({ 
               x: x, 
               y: y + TILE_SIZE/2 + ROW_GAP/2, 
@@ -201,7 +200,7 @@ export default function App() {
           });
       }
 
-      tiles.push({ x, y, type, index: i });
+      tiles.push({ x, y, type, index: i, isCorner: colInRow === cols - 1 });
     }
     return { tilesData: tiles, bridges: bridgesData };
   }, []);
@@ -280,8 +279,6 @@ export default function App() {
       setPhase('turn_start');
   };
 
-  // --- VISTAS ---
-
   if (view === 'menu') {
       return (
           <div className="min-h-screen bg-sky-200 text-slate-900 flex flex-col items-center justify-center p-6 relative font-sans">
@@ -308,7 +305,6 @@ export default function App() {
                        <h2 className="text-2xl font-black uppercase">Jugadores</h2>
                        <div className="w-10" /> 
                    </div>
-                   {/* Layout en columna para móvil */}
                    <div className="flex flex-col gap-3 mb-6">
                        <input 
                          type="text" 
@@ -322,7 +318,6 @@ export default function App() {
                            <UserPlus /> AÑADIR
                        </button>
                    </div>
-
                    <div className="space-y-2 max-h-[50vh] overflow-y-auto">
                        {players.map((p) => (
                            <div key={p.id} className="flex items-center justify-between bg-gray-50 p-3 rounded-xl border-2 border-black animate-in slide-in-from-bottom-2">
@@ -337,7 +332,6 @@ export default function App() {
       );
   }
 
-  // --- JUEGO (VERTICAL) ---
   const activePlayer = players[turnIndex];
 
   return (
@@ -357,10 +351,10 @@ export default function App() {
 
           {/* TABLERO SCROLLABLE */}
           <div className="flex-1 overflow-auto relative p-8">
-             <div className="flex justify-center min-h-full items-start pt-10 pb-32"> {/* Padding bottom extra para controles */}
-                 <div className="relative transform scale-[1] origin-top">
-                    {/* GRID VERTICAL */}
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 70px)', rowGap: '30px', columnGap: '0px' }}>
+             <div className="flex justify-center min-h-full items-start pt-10 pb-32"> 
+                 <div className="relative transform scale-[0.6] origin-top"> {/* Escala para que 10 columnas quepan en vertical */}
+                    {/* GRID */}
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(10, 70px)', rowGap: '30px', columnGap: '0px' }}>
                         {tilesData.map((tile) => (
                             <div key={tile.index} className="w-[70px] h-[70px] flex items-center justify-center relative box-border"
                                 style={{ 
@@ -378,7 +372,7 @@ export default function App() {
                     {bridges.map((bridge, i) => (
                         <div key={i} className="absolute w-[60px] border-x-4 border-black z-0" 
                              style={{ 
-                                 left: bridge.x - TILE_SIZE/2 + 5, // Ajuste fino por borde
+                                 left: bridge.x - TILE_SIZE/2 + 5, 
                                  top: bridge.y - ROW_GAP/2 - TILE_SIZE/2, 
                                  height: ROW_GAP + TILE_SIZE, 
                                  backgroundColor: bridge.color 
@@ -396,7 +390,7 @@ export default function App() {
                                 className="absolute w-8 h-8 rounded-full border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,0.5)] transition-all duration-500 ease-in-out z-20 flex items-center justify-center"
                                 style={{ 
                                     backgroundColor: p.color, 
-                                    left: tile.x - 35 + 35 - 4 + offset, // Ajustes finos para centrar en 70px
+                                    left: tile.x - 35 + 35 - 4 + offset, 
                                     top: tile.y - 35 + 35 - 4 + offset 
                                 }}
                             >
@@ -408,18 +402,25 @@ export default function App() {
              </div>
           </div>
 
-          {/* CONTROLES INFERIORES */}
-          <div className="relative z-40 p-4 pb-8 pointer-events-none flex justify-center">
-              {phase === 'ready' && (
-                  <button onClick={() => setPhase('turn_start')} className="pointer-events-auto px-10 py-4 bg-green-500 text-white border-2 border-black rounded-xl font-black text-xl hover:bg-green-400 transition-transform active:translate-y-1 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">EMPEZAR</button>
-              )}
+          {/* FASE: READY */}
+          {phase === 'ready' && (
+              <div className="absolute inset-0 z-40 flex items-center justify-center pointer-events-none">
+                  <div className="bg-white border-4 border-black p-6 rounded-3xl shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] animate-in zoom-in pointer-events-auto">
+                      <button onClick={() => setPhase('turn_start')} className="px-10 py-4 bg-green-500 text-white border-2 border-black rounded-xl font-black text-xl hover:bg-green-400 transition-transform active:translate-y-1 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">EMPEZAR TURNO</button>
+                  </div>
+              </div>
+          )}
 
-              {phase === 'turn_start' && (
-                 <button onClick={() => setPhase('spinning')} className="pointer-events-auto w-full max-w-xs py-4 bg-blue-500 text-white border-2 border-black font-black text-xl rounded-xl hover:bg-blue-400 transition-transform active:translate-y-1 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] active:shadow-none animate-bounce">
+          {/* FASE: TURN START */}
+          {phase === 'turn_start' && (
+             <div className="absolute bottom-0 left-0 right-0 p-6 z-40 bg-white/90 backdrop-blur-md border-t-4 border-black rounded-t-3xl animate-in slide-in-from-bottom-10 flex flex-col items-center">
+                 <p className="text-gray-500 font-black uppercase tracking-widest text-xs mb-2">TURNO DE</p>
+                 <h2 className="text-3xl font-black mb-4 truncate w-full text-center" style={{ color: activePlayer.color }}>{activePlayer.name}</h2>
+                 <button onClick={() => setPhase('spinning')} className="w-full max-w-sm py-4 bg-blue-500 text-white border-2 border-black font-black text-xl rounded-xl hover:bg-blue-400 transition-transform active:translate-y-1 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] active:shadow-none animate-bounce">
                     TIRAR RULETA
                  </button>
-              )}
-          </div>
+             </div>
+          )}
 
           {/* OVERLAYS */}
           {phase === 'spinning' && <Roulette onSpinComplete={handleSpinComplete} />}
@@ -435,7 +436,6 @@ export default function App() {
                      </div>
                      <div className="bg-gray-100 p-4 rounded-xl border-2 border-black mb-6">
                          <p className="text-xl font-bold leading-tight">{currentEvent.data.text}</p>
-                         {currentEvent.data.actionText && <div className="mt-3 inline-block bg-yellow-300 border-2 border-black px-3 py-1 rounded-lg text-black text-sm font-black uppercase"><AlertTriangle size={14} className="inline mr-1"/>{currentEvent.data.actionText}</div>}
                      </div>
                      <div className="grid grid-cols-2 gap-3">
                          <button onClick={() => handleEventClose(0)} className="py-3 rounded-xl bg-gray-300 border-2 border-black font-bold hover:bg-gray-200">Saltar</button>
@@ -451,7 +451,7 @@ export default function App() {
                       <Trophy size={80} className="mx-auto mb-4 animate-bounce" />
                       <h1 className="text-6xl font-black uppercase mb-4 drop-shadow-md text-white stroke-black" style={{ WebkitTextStroke: '2px black' }}>¡GANADOR!</h1>
                       <p className="text-4xl font-bold mb-12">{activePlayer?.name}</p>
-                      <button onClick={resetGame} className="px-8 py-4 bg-white border-4 border-black text-black font-black text-xl rounded-2xl hover:scale-105 transition-transform shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] active:shadow-none active:translate-y-2">VOLVER AL MENÚ</button>
+                      <button onClick={resetGame} className="px-8 py-4 bg-white border-4 border-black text-black font-black text-xl rounded-2xl hover:scale-105 transition-transform shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] active:shadow-none active:translate-y-2"><RotateCcw className="inline mr-2" /> MENÚ</button>
                   </div>
               </div>
           )}
