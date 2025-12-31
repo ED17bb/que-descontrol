@@ -1,13 +1,11 @@
 import { useState, useMemo, useEffect } from 'react';
-import { UserPlus, Play, Skull, HelpCircle, Swords, PartyPopper, Zap, Trophy, Trash2, Users, X, ArrowLeft, RotateCcw, AlertTriangle } from 'lucide-react';
+import { UserPlus, Play, Skull, HelpCircle, Swords, PartyPopper, Zap, Trophy, Trash2, Users, Smartphone, X, ArrowLeft, RotateCcw, AlertTriangle } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
 // --- CONFIGURACIÓN ---
 const TOTAL_TILES = 50;
-// Ajustes para móvil vertical (5 columnas)
 const TILE_SIZE = 60; 
 const ROW_GAP = 15; 
-const GAP = 15; // Espacio horizontal entre columnas (si se usara en layout, aquí definido para consistencia)
 
 interface Player {
   id: number;
@@ -31,7 +29,6 @@ interface TileData {
   isCorner: boolean; 
 }
 
-// Colores vibrantes estilo tablero infantil
 const TILE_TYPES: TileType[] = [
   { id: 'PELIGRO', color: '#ff5252', icon: Skull, label: 'Peligro' },     
   { id: 'TRIVIA', color: '#448aff', icon: HelpCircle, label: 'Trivia' },  
@@ -64,7 +61,7 @@ const EVENTS_DB: Record<string, { text: string; actionText?: string; penalty?: n
   ]
 };
 
-// --- COMPONENTE: RULETA ---
+// --- COMPONENTE: RULETA (Minimalista) ---
 const Roulette = ({ onSpinComplete }: { onSpinComplete: (num: number) => void }) => {
   const [spinning, setSpinning] = useState(false);
   const [rotation, setRotation] = useState(0);
@@ -88,34 +85,44 @@ const Roulette = ({ onSpinComplete }: { onSpinComplete: (num: number) => void })
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-      <div className="bg-white border-4 border-black rounded-3xl p-6 flex flex-col items-center shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] max-w-xs w-full animate-in zoom-in">
+      {/* Contenedor más pequeño (w-64 en vez de w-full max-w-xs) */}
+      <div className="bg-white border-4 border-black rounded-3xl p-5 flex flex-col items-center shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] w-64 animate-in zoom-in">
         {!result ? (
           <>
-            <h2 className="text-2xl font-black text-black mb-4 uppercase tracking-wider">¡GIRA!</h2>
-            <div className="relative w-56 h-56 mb-6">
-              <div className="absolute -top-4 left-1/2 -translate-x-1/2 z-20 w-0 h-0 border-l-[15px] border-l-transparent border-r-[15px] border-r-transparent border-t-[25px] border-t-black drop-shadow-md" />
+            <h2 className="text-lg font-black text-black mb-4 uppercase tracking-wider">¡GIRA!</h2>
+            {/* Ruleta más pequeña (w-40 h-40) */}
+            <div className="relative w-40 h-40 mb-5">
+              <div className="absolute -top-3 left-1/2 -translate-x-1/2 z-20 w-0 h-0 border-l-[10px] border-l-transparent border-r-[10px] border-r-transparent border-t-[18px] border-t-black drop-shadow-md" />
               <div 
                 className="w-full h-full rounded-full border-4 border-black overflow-hidden relative transition-transform duration-[3000ms] cubic-bezier(0.15, 0.80, 0.15, 1)"
                 style={{ transform: `rotate(${rotation}deg)` }}
               >
+                {/* Fondo sin colores (solo grises alternados) */}
                 <div className="w-full h-full rounded-full" style={{ 
-                  background: `conic-gradient(#ef4444 0deg 60deg, #3b82f6 60deg 120deg, #eab308 120deg 180deg, #22c55e 180deg 240deg, #a855f7 240deg 300deg, #f97316 300deg 360deg)` 
+                  background: `conic-gradient(
+                    #f3f4f6 0deg 60deg, 
+                    #d1d5db 60deg 120deg, 
+                    #f3f4f6 120deg 180deg, 
+                    #d1d5db 180deg 240deg, 
+                    #f3f4f6 240deg 300deg, 
+                    #d1d5db 300deg 360deg
+                  )` 
                 }}></div>
                 {[1, 2, 3, 4, 5, 6].map((num, i) => (
-                   <span key={num} className="absolute text-2xl font-black text-white drop-shadow-md" style={{ top: '15%', left: '50%', transform: `translateX(-50%) rotate(${i * 60}deg) translateY(-20px)`, transformOrigin: '0 100px' }}>{num}</span>
+                   <span key={num} className="absolute text-lg font-black text-black" style={{ top: '12%', left: '50%', transform: `translateX(-50%) rotate(${i * 60}deg) translateY(-10px)`, transformOrigin: '0 70px' }}>{num}</span>
                 ))}
-                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-8 h-8 bg-white rounded-full border-4 border-black shadow-inner" />
+                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-6 h-6 bg-black rounded-full shadow-inner" />
               </div>
             </div>
-            <button onClick={spin} disabled={spinning} className="w-full py-4 bg-yellow-400 hover:bg-yellow-300 text-black border-2 border-black font-black text-xl rounded-xl shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-transform active:translate-y-1 active:shadow-none disabled:opacity-50">
-              {spinning ? 'GIRANDO...' : 'GIRAR'}
+            <button onClick={spin} disabled={spinning} className="w-full py-2 bg-black text-white font-black text-lg rounded-xl shadow-lg transition-transform active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed">
+              {spinning ? '...' : 'GIRAR'}
             </button>
           </>
         ) : (
           <div className="text-center w-full">
-             <p className="text-slate-500 font-bold uppercase text-xs mb-2">SALIO EL</p>
-             <div className="text-9xl font-black text-black mb-6">{result}</div>
-             <button onClick={() => onSpinComplete(result)} className="w-full py-4 bg-green-500 hover:bg-green-400 text-white border-2 border-black font-black text-xl rounded-xl shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-transform active:translate-y-1 active:shadow-none">AVANZAR</button>
+             <p className="text-slate-500 font-bold uppercase text-xs mb-1">SALIO EL</p>
+             <div className="text-7xl font-black text-black mb-4">{result}</div>
+             <button onClick={() => onSpinComplete(result)} className="w-full py-2 bg-green-500 hover:bg-green-400 text-white border-2 border-black font-black text-lg rounded-xl shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-transform active:translate-y-1 active:shadow-none">AVANZAR</button>
           </div>
         )}
       </div>
@@ -134,6 +141,9 @@ export default function App() {
   const [stepsToMove, setStepsToMove] = useState(0);
   const [currentEvent, setCurrentEvent] = useState<any>(null); // eslint-disable-line @typescript-eslint/no-explicit-any
   const [newPlayerName, setNewPlayerName] = useState('');
+  
+  // Semilla para generar tablero aleatorio
+  const [boardSeed, setBoardSeed] = useState(0);
 
   const playSound = (type: 'click' | 'step') => {
     if (!audioEnabled) return;
@@ -161,12 +171,11 @@ export default function App() {
     } catch(e) {}
   };
 
-  // --- GENERACIÓN TABLERO VERTICAL SERPIENTE ---
+  // --- GENERACIÓN TABLERO VERTICAL SERPIENTE (ALEATORIO) ---
   const { tilesData, bridges } = useMemo(() => {
     const tiles: TileData[] = [];
     const bridgesData: { x: number, y: number, color: string }[] = [];
     
-    // Configuración VERTICAL: 5 columnas (ancho móvil)
     const cols = 5;
     
     const startX = 0; 
@@ -175,24 +184,23 @@ export default function App() {
     for (let i = 0; i < TOTAL_TILES; i++) {
       const row = Math.floor(i / cols);
       const colInRow = i % cols;
-      // Serpiente: filas pares -> derecha, impares <- izquierda
       const isEvenRow = row % 2 === 0;
       const col = isEvenRow ? colInRow : (cols - 1 - colInRow);
       
-      const x = startX + col * (TILE_SIZE + GAP);
+      const x = startX + col * (TILE_SIZE + 0); // 0 gap para pegar los cuadros
       const y = startY + row * (TILE_SIZE + ROW_GAP);
       
+      // ALEATORIEDAD: Elegir tipo al azar en cada generación
       const type = i === TOTAL_TILES - 1 
         ? { id: 'META', color: '#ffffff', icon: Trophy, label: 'Final' } 
-        : TILE_TYPES[i % TILE_TYPES.length];
+        : TILE_TYPES[Math.floor(Math.random() * TILE_TYPES.length)];
 
-      // PUENTES (Escaleras)
       const isEndOfRow = (colInRow === cols - 1);
       
       if (isEndOfRow && i < TOTAL_TILES - 1) {
           bridgesData.push({ 
               x: x, 
-              y: y + TILE_SIZE, // Justo debajo de la casilla
+              y: y + TILE_SIZE, 
               color: type.color 
           });
       }
@@ -200,7 +208,7 @@ export default function App() {
       tiles.push({ x, y, type, index: i, isCorner: isEndOfRow });
     }
     return { tilesData: tiles, bridges: bridgesData };
-  }, []);
+  }, [boardSeed]); // Regenerar cuando cambie la semilla
 
   const handleAddPlayer = () => {
     if (!newPlayerName.trim()) return;
@@ -216,6 +224,7 @@ export default function App() {
   };
 
   const startGame = () => {
+    setBoardSeed(Math.random()); // Generar nuevo tablero
     setView('game');
     setPhase('ready');
   };
@@ -351,7 +360,7 @@ export default function App() {
              <div className="flex justify-center min-h-full items-start pt-4 pb-32"> 
                  {/* Contenedor relativo para posicionar tiles absolutos */}
                  <div className="relative" style={{ 
-                     width: 5 * (TILE_SIZE + GAP) - GAP, // 5 columnas
+                     width: 5 * (TILE_SIZE), // Ancho exacto sin Gaps
                      height: Math.ceil(TOTAL_TILES/5) * (TILE_SIZE + ROW_GAP) 
                  }}>
                     
@@ -375,18 +384,19 @@ export default function App() {
                     {tilesData.map((tile) => (
                         <div 
                             key={tile.index} 
-                            className="absolute flex items-center justify-center box-border z-10 shadow-[4px_4px_0px_0px_rgba(0,0,0,0.2)]"
+                            className="absolute flex items-center justify-center box-border z-10 shadow-[2px_2px_0px_0px_rgba(0,0,0,0.1)]"
                             style={{ 
                                 left: tile.x,
                                 top: tile.y,
                                 width: TILE_SIZE,
                                 height: TILE_SIZE,
                                 backgroundColor: tile.type.id === 'META' ? 'white' : tile.type.color,
-                                border: '3px solid black', 
-                                borderRadius: '12px', 
+                                border: '2px solid black', 
+                                // Bordes pegados: eliminamos radio
+                                borderRadius: '0px', 
                             }}
                         >
-                            {tile.type.id === 'META' ? <Trophy className="text-yellow-500 w-8 h-8" /> : <span className="text-white/90 font-black text-xl drop-shadow-md">{tile.index + 1}</span>}
+                            {tile.type.id === 'META' ? <Trophy className="text-yellow-500 w-8 h-8" /> : <span className="text-white/80 font-black text-xl drop-shadow-md">{tile.index + 1}</span>}
                         </div>
                     ))}
 
