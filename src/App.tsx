@@ -61,38 +61,46 @@ const EVENTS_DB: Record<string, { text: string; actionText?: string; penalty?: n
   ]
 };
 
-// --- COMPONENTE: RULETA (Minimalista) ---
+// --- COMPONENTE: RULETA (FLOTANTE Y TRANSPARENTE) ---
 const Roulette = ({ onSpinComplete }: { onSpinComplete: (num: number) => void }) => {
   const [spinning, setSpinning] = useState(false);
   const [rotation, setRotation] = useState(0);
-  const [result, setResult] = useState<number | null>(null);
 
   const spin = () => {
-    if (spinning || result) return;
+    if (spinning) return;
     setSpinning(true);
     
     const randomValue = Math.floor(Math.random() * 6) + 1;
+    // Cálculo preciso para alinear el centro del segmento con la aguja (arriba)
+    // 6 segmentos de 60 grados. 
+    // Segmento 1: 0-60. Centro 30. Para que 30 esté en 0 (arriba, -90 visualmente o 0 nativo), rotamos:
+    // (6 - randomValue) * 60 + 30  -> Esto alinea el centro del segmento elegido al TOP (0 grados)
     const segmentAngle = 360 / 6;
-    const targetAngle = 1800 + (6 - randomValue) * segmentAngle + segmentAngle / 2; 
+    const offset = 30; // Mitad del segmento para centrar
+    const targetAngle = 1800 + (6 - randomValue) * segmentAngle + offset; 
     
     setRotation(targetAngle);
 
+    // Animación de 3s. Al terminar, llamamos DIRECTAMENTE a onSpinComplete
     setTimeout(() => {
-      setResult(randomValue);
-      setSpinning(false);
+      // Pequeña pausa para ver el resultado 0.5s
+      setTimeout(() => {
+          onSpinComplete(randomValue);
+      }, 500);
     }, 3000); 
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-      <div className="bg-white border-4 border-black rounded-3xl p-5 flex flex-col items-center shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] w-64 animate-in zoom-in">
-        {!result ? (
-          <>
-            <h2 className="text-lg font-black text-black mb-4 uppercase tracking-wider">¡GIRA!</h2>
-            <div className="relative w-40 h-40 mb-5">
-              <div className="absolute -top-3 left-1/2 -translate-x-1/2 z-20 w-0 h-0 border-l-[10px] border-l-transparent border-r-[10px] border-r-transparent border-t-[18px] border-t-black drop-shadow-md" />
+    <div className="fixed inset-0 z-50 flex items-center justify-center pointer-events-none">
+        {/* Contenedor sin fondo borroso para ver el tablero */}
+      <div className="bg-white/90 border-4 border-black rounded-full p-4 flex flex-col items-center shadow-[0px_10px_20px_rgba(0,0,0,0.5)] pointer-events-auto animate-in zoom-in duration-300 scale-90">
+            <div className="relative w-48 h-48 mb-4">
+              {/* Flecha indicadora */}
+              <div className="absolute -top-5 left-1/2 -translate-x-1/2 z-20 w-0 h-0 border-l-[12px] border-l-transparent border-r-[12px] border-r-transparent border-t-[24px] border-t-red-600 drop-shadow-md" />
+              
+              {/* Rueda */}
               <div 
-                className="w-full h-full rounded-full border-4 border-black overflow-hidden relative transition-transform duration-[3000ms] cubic-bezier(0.15, 0.80, 0.15, 1)"
+                className="w-full h-full rounded-full border-4 border-black overflow-hidden relative transition-transform duration-[3000ms] cubic-bezier(0.2, 0.8, 0.2, 1)"
                 style={{ transform: `rotate(${rotation}deg)` }}
               >
                 <div className="w-full h-full rounded-full" style={{ 
@@ -106,22 +114,21 @@ const Roulette = ({ onSpinComplete }: { onSpinComplete: (num: number) => void })
                   )` 
                 }}></div>
                 {[1, 2, 3, 4, 5, 6].map((num, i) => (
-                   <span key={num} className="absolute text-lg font-black text-black" style={{ top: '12%', left: '50%', transform: `translateX(-50%) rotate(${i * 60}deg) translateY(-10px)`, transformOrigin: '0 70px' }}>{num}</span>
+                   <span key={num} className="absolute text-xl font-black text-black" style={{ top: '10%', left: '50%', transform: `translateX(-50%) rotate(${i * 60}deg) translateY(0px)`, transformOrigin: '0 85px' }}>{num}</span>
                 ))}
-                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-6 h-6 bg-black rounded-full shadow-inner" />
+                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-4 h-4 bg-black rounded-full shadow-inner" />
               </div>
             </div>
-            <button onClick={spin} disabled={spinning} className="w-full py-2 bg-black text-white font-black text-lg rounded-xl shadow-lg transition-transform active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed">
-              {spinning ? '...' : 'GIRAR'}
-            </button>
-          </>
-        ) : (
-          <div className="text-center w-full">
-             <p className="text-slate-500 font-bold uppercase text-xs mb-1">SALIO EL</p>
-             <div className="text-7xl font-black text-black mb-4">{result}</div>
-             <button onClick={() => onSpinComplete(result)} className="w-full py-2 bg-green-500 hover:bg-green-400 text-white border-2 border-black font-black text-lg rounded-xl shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-transform active:translate-y-1 active:shadow-none">AVANZAR</button>
-          </div>
-        )}
+            
+            {!spinning && (
+                <button 
+                    onClick={spin}
+                    className="px-8 py-2 bg-yellow-400 hover:bg-yellow-300 text-black border-2 border-black font-black text-lg rounded-full shadow-lg transition-transform active:scale-95"
+                >
+                GIRAR
+                </button>
+            )}
+            {spinning && <div className="text-black font-bold text-sm animate-pulse">¡SUERTE!</div>}
       </div>
     </div>
   );
@@ -136,73 +143,44 @@ export default function App() {
   
   const [phase, setPhase] = useState<'ready' | 'turn_start' | 'spinning' | 'moving' | 'event'>('ready');
   const [stepsToMove, setStepsToMove] = useState(0);
+  const [rolledNumber, setRolledNumber] = useState<number | null>(null); // Guardar el número que salió
   const [currentEvent, setCurrentEvent] = useState<any>(null); // eslint-disable-line @typescript-eslint/no-explicit-any
   const [newPlayerName, setNewPlayerName] = useState('');
 
-  // --- SEMILLA PARA TABLERO ALEATORIO ---
-  const [boardSeed, setBoardSeed] = useState(0);
-
-  const playSound = (type: 'click' | 'step') => {
-    if (!audioEnabled) return;
-    try {
-        const AudioContext = (window as any).AudioContext || (window as any).webkitAudioContext;
-        if (!AudioContext) return;
-        const ctx = new AudioContext();
-        const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
-        osc.connect(gain);
-        gain.connect(ctx.destination);
-        const now = ctx.currentTime;
-        if (type === 'click') {
-            osc.frequency.setValueAtTime(600, now);
-            osc.frequency.exponentialRampToValueAtTime(100, now + 0.1);
-            gain.gain.setValueAtTime(0.1, now);
-            gain.gain.linearRampToValueAtTime(0, now + 0.1);
-        } else {
-            osc.type = 'triangle';
-            osc.frequency.setValueAtTime(300, now);
-            gain.gain.setValueAtTime(0.05, now);
-            gain.gain.linearRampToValueAtTime(0, now + 0.05);
-        }
-        osc.start(now); osc.stop(now + 0.1);
-    } catch(e) {}
-  };
-
-  // --- GENERACIÓN TABLERO VERTICAL SERPIENTE (ALEATORIO) ---
+  // --- GENERACIÓN TABLERO VERTICAL SERPIENTE ---
   const { tilesData, bridges } = useMemo(() => {
     const tiles: TileData[] = [];
     const bridgesData: { x: number, y: number, color: string }[] = [];
     
-    // Configuración VERTICAL: 5 columnas (ancho móvil)
     const cols = 5;
+    const rows = Math.ceil(TOTAL_TILES / cols); // 10 filas para 50 tiles
     
-    const startX = 0; 
-    const startY = 0;
+    // Centrar tablero
+    const boardWidth = cols * TILE_SIZE;
+    const boardHeight = rows * (TILE_SIZE + ROW_GAP) - ROW_GAP;
+    
+    const startX = -boardWidth / 2 + TILE_SIZE / 2;
+    const startY = -boardHeight / 2 + TILE_SIZE / 2;
 
     for (let i = 0; i < TOTAL_TILES; i++) {
       const row = Math.floor(i / cols);
       const colInRow = i % cols;
-      // Serpiente: filas pares -> derecha, impares <- izquierda
       const isEvenRow = row % 2 === 0;
       const col = isEvenRow ? colInRow : (cols - 1 - colInRow);
       
-      const x = startX + col * TILE_SIZE; // Pegados horizontalmente
-      const y = startY + row * (TILE_SIZE + ROW_GAP); // Separados verticalmente
+      const x = startX + col * TILE_SIZE;
+      const y = startY + row * (TILE_SIZE + ROW_GAP);
       
-      // ALEATORIEDAD: Elegir tipo al azar
       const type = i === TOTAL_TILES - 1 
         ? { id: 'META', color: '#ffffff', icon: Trophy, label: 'Final' } 
-        : TILE_TYPES[Math.floor(Math.random() * TILE_TYPES.length)]; // Usamos un random simple basado en render, para consistencia usaríamos boardSeed pero useMemo lo maneja
+        : TILE_TYPES[i % TILE_TYPES.length];
 
-      // PUENTES VERTICALES (Escalera)
-      // Conecta el final de una fila con el inicio de la siguiente
-      // El "final" de la fila visual es siempre la última columna en la dirección de lectura
       const isEndOfRow = (colInRow === cols - 1);
       
       if (isEndOfRow && i < TOTAL_TILES - 1) {
           bridgesData.push({ 
               x: x, 
-              y: y + TILE_SIZE, // Comienza justo al final del tile actual
+              y: y + TILE_SIZE, 
               color: type.color 
           });
       }
@@ -210,23 +188,20 @@ export default function App() {
       tiles.push({ x, y, type, index: i, isCorner: isEndOfRow });
     }
     return { tilesData: tiles, bridges: bridgesData };
-  }, [boardSeed]); // Se regenera cuando cambia la semilla (al iniciar juego)
+  }, []);
 
   const handleAddPlayer = () => {
     if (!newPlayerName.trim()) return;
     const colors = ['#ef4444', '#3b82f6', '#eab308', '#a855f7', '#f97316', '#10b981'];
     setPlayers([...players, { id: Date.now(), name: newPlayerName, positionIndex: 0, color: colors[players.length % colors.length] }]);
     setNewPlayerName('');
-    playSound('click');
   };
 
   const handleRemovePlayer = (id: number) => {
     setPlayers(players.filter(p => p.id !== id));
-    playSound('click');
   };
 
   const startGame = () => {
-    setBoardSeed(Math.random()); // Nuevo tablero aleatorio
     setView('game');
     setPhase('ready');
   };
@@ -238,6 +213,7 @@ export default function App() {
     setPhase('ready');
   };
 
+  // LÓGICA DE MOVIMIENTO AUTOMÁTICO
   useEffect(() => {
     if (phase === 'moving' && stepsToMove > 0) {
         const timer = setTimeout(() => {
@@ -246,29 +222,33 @@ export default function App() {
                 const player = newPlayers[turnIndex];
                 if (player.positionIndex >= TOTAL_TILES - 1) return newPlayers; 
                 player.positionIndex += 1;
-                playSound('step');
                 return newPlayers;
             });
             setStepsToMove(s => s - 1);
-        }, 300);
+        }, 500); // 0.5s por paso para que se aprecie bien
         return () => clearTimeout(timer);
     } else if (phase === 'moving' && stepsToMove === 0) {
-        const player = players[turnIndex];
-        if (player.positionIndex >= TOTAL_TILES - 1) {
-            setView('win');
-        } else {
-            const tile = tilesData[player.positionIndex];
-            const eventList = EVENTS_DB[tile.type.id] || EVENTS_DB['SUERTE'];
-            const randomEvent = eventList[Math.floor(Math.random() * eventList.length)];
-            setCurrentEvent({ data: randomEvent, tileType: tile.type });
-            setPhase('event');
-        }
+        // Pausa breve al llegar antes de mostrar el evento
+        setTimeout(() => {
+            const player = players[turnIndex];
+            if (player.positionIndex >= TOTAL_TILES - 1) {
+                setView('win');
+            } else {
+                const tile = tilesData[player.positionIndex];
+                const eventList = EVENTS_DB[tile.type.id] || EVENTS_DB['SUERTE'];
+                const randomEvent = eventList[Math.floor(Math.random() * eventList.length)];
+                setCurrentEvent({ data: randomEvent, tileType: tile.type });
+                setPhase('event');
+                setRolledNumber(null); // Ocultar aviso de número
+            }
+        }, 500);
     }
   }, [phase, stepsToMove, players, turnIndex, tilesData]);
 
   const handleSpinComplete = (num: number) => {
+      setRolledNumber(num);
       setStepsToMove(num);
-      setPhase('moving');
+      setPhase('moving'); // Cambio directo a movimiento, la ruleta se desmonta
   };
 
   const handleEventClose = (moveBonus: number = 0) => {
@@ -360,69 +340,30 @@ export default function App() {
           {/* TABLERO SCROLLABLE */}
           <div className="flex-1 overflow-auto relative p-4">
              <div className="flex justify-center min-h-full items-start pt-4 pb-32"> 
-                 {/* Contenedor relativo para posicionar tiles absolutos */}
                  <div className="relative" style={{ 
-                     width: 5 * TILE_SIZE, // 5 columnas exactas sin gap horizontal
+                     width: 5 * TILE_SIZE, 
                      height: Math.ceil(TOTAL_TILES/5) * (TILE_SIZE + ROW_GAP) 
                  }}>
-                    
-                    {/* PUENTES (Escaleras de bajada) */}
                     {bridges.map((bridge, i) => (
-                        <div key={i} className="absolute z-0 flex flex-col items-center justify-center" 
-                             style={{ 
-                                 left: bridge.x, 
-                                 top: bridge.y, 
-                                 width: TILE_SIZE, 
-                                 height: ROW_GAP, 
-                             }} 
-                        >
-                            {/* Rieles de la escalera */}
-                            <div className="absolute left-3 top-0 bottom-0 w-2 bg-black/20" />
-                            <div className="absolute right-3 top-0 bottom-0 w-2 bg-black/20" />
-                            {/* Peldaños */}
-                            <div className="absolute top-1/4 left-2 right-2 h-1 bg-black/20" />
-                            <div className="absolute top-1/2 left-2 right-2 h-1 bg-black/20" />
-                            <div className="absolute top-3/4 left-2 right-2 h-1 bg-black/20" />
+                        <div key={i} className="absolute z-0 flex flex-col items-center justify-center" style={{ left: bridge.x, top: bridge.y, width: TILE_SIZE, height: ROW_GAP + 5 }}>
+                            <div className="w-1/2 h-full border-x-4 border-black/20" />
+                            <div className="absolute top-1/2 w-3/4 h-1 bg-black/20" />
                         </div>
                     ))}
 
-                    {/* CASILLAS */}
                     {tilesData.map((tile) => (
-                        <div 
-                            key={tile.index} 
-                            className="absolute flex items-center justify-center box-border z-10 shadow-[4px_4px_0px_0px_rgba(0,0,0,0.2)]"
-                            style={{ 
-                                left: tile.x,
-                                top: tile.y,
-                                width: TILE_SIZE,
-                                height: TILE_SIZE,
-                                backgroundColor: tile.type.id === 'META' ? 'white' : tile.type.color,
-                                border: '3px solid black', 
-                                borderRadius: '8px', 
-                            }}
-                        >
+                        <div key={tile.index} className="absolute flex items-center justify-center box-border z-10 shadow-[4px_4px_0px_0px_rgba(0,0,0,0.2)]"
+                            style={{ left: tile.x, top: tile.y, width: TILE_SIZE, height: TILE_SIZE, backgroundColor: tile.type.id === 'META' ? 'white' : tile.type.color, border: '3px solid black', borderRadius: '8px' }}>
                             {tile.type.id === 'META' ? <Trophy className="text-yellow-500 w-8 h-8" /> : <span className="text-white/80 font-black text-xl drop-shadow-md">{tile.index + 1}</span>}
                         </div>
                     ))}
 
-                    {/* JUGADORES */}
                     {players.map((p, i) => {
                         const tile = tilesData[p.positionIndex];
-                        // Offset para que no se tapen si caen juntos
-                        const offsetX = (i % 2) * 10 - 5;
-                        const offsetY = Math.floor(i / 2) * 10 - 5;
-                        
+                        const offset = (i * 5) - (players.length * 2.5); 
                         return (
-                            <div 
-                                key={p.id} 
-                                className="absolute w-8 h-8 rounded-full border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,0.5)] transition-all duration-500 ease-in-out z-20 flex items-center justify-center"
-                                style={{ 
-                                    backgroundColor: p.color, 
-                                    // Centrar en la casilla + offset
-                                    left: tile.x + (TILE_SIZE/2) - 16 + offsetX, 
-                                    top: tile.y + (TILE_SIZE/2) - 16 + offsetY 
-                                }}
-                            >
+                            <div key={p.id} className="absolute w-8 h-8 rounded-full border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,0.5)] transition-all duration-500 ease-in-out z-20 flex items-center justify-center"
+                                style={{ backgroundColor: p.color, left: tile.x + (TILE_SIZE/2) - 16 + offset, top: tile.y + (TILE_SIZE/2) - 16 + offset }}>
                                 <span className="text-[10px] font-black text-white">{p.name.substring(0, 1)}</span>
                             </div>
                         );
@@ -451,8 +392,19 @@ export default function App() {
              </div>
           )}
 
-          {/* OVERLAYS */}
+          {/* RULETA FLOTANTE (SIN BLUR FONDO) */}
           {phase === 'spinning' && <Roulette onSpinComplete={handleSpinComplete} />}
+
+          {/* AVISO DE NUMERO OBTENIDO Y MOVIMIENTO */}
+          {phase === 'moving' && rolledNumber && (
+              <div className="absolute top-24 right-4 z-50 animate-in slide-in-from-right fade-in duration-300">
+                  <div className="bg-white border-4 border-black rounded-2xl p-4 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] flex flex-col items-center">
+                      <p className="text-xs font-black text-gray-500 uppercase">SALIÓ EL</p>
+                      <div className="text-5xl font-black text-black">{rolledNumber}</div>
+                      <div className="mt-2 text-xs font-bold text-blue-500 animate-pulse">AVANZANDO...</div>
+                  </div>
+              </div>
+          )}
 
           {phase === 'event' && currentEvent && (
               <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-6 animate-in zoom-in">
