@@ -4,6 +4,8 @@ import type { LucideIcon } from 'lucide-react';
 
 // --- CONFIGURACIÓN ---
 const TOTAL_TILES = 50;
+const TILE_SIZE = 70; // Tamaño de la casilla
+const ROW_GAP = 30;   // Espacio entre filas
 
 interface Player {
   id: number;
@@ -24,7 +26,7 @@ interface TileData {
   y: number;
   type: TileType;
   index: number;
-  isCorner: boolean; // Para saber si es una casilla de bajada
+  isCorner: boolean; 
 }
 
 // Colores estilo "Juego de Mesa Infantil"
@@ -71,11 +73,6 @@ const Roulette = ({ onSpinComplete }: { onSpinComplete: (num: number) => void })
     setSpinning(true);
     
     const randomValue = Math.floor(Math.random() * 6) + 1;
-    // Ajuste matemático para que la aguja (arriba) caiga en el número correcto
-    // Segmentos: 6. Grados por segmento: 60.
-    // Orden visual (conic-gradient): 1, 2, 3, 4, 5, 6
-    // Para que salga el 1 (0-60deg) arriba, hay que rotar. 
-    // Simplificación visual: Giramos muchas veces y sumamos un offset aleatorio controlado
     const segmentAngle = 360 / 6;
     const targetAngle = 1800 + (6 - randomValue) * segmentAngle + segmentAngle / 2; 
     
@@ -136,7 +133,6 @@ export default function App() {
   const [currentEvent, setCurrentEvent] = useState<any>(null); // eslint-disable-line @typescript-eslint/no-explicit-any
   const [newPlayerName, setNewPlayerName] = useState('');
 
-  // Detectar orientación
   useEffect(() => {
     const check = () => setIsPortrait(window.innerHeight > window.innerWidth);
     check();
@@ -176,12 +172,10 @@ export default function App() {
     
     const rows = 5; 
     const cols = 10;
-    const TILE_SIZE = 80; // Tamaño cuadrado
-    const ROW_GAP = 30;   // Espacio vertical entre filas
     
     // Centrar tablero
     const boardWidth = cols * TILE_SIZE;
-    const boardHeight = rows * (TILE_SIZE + ROW_GAP) - ROW_GAP; // Restar último gap
+    const boardHeight = rows * (TILE_SIZE + ROW_GAP) - ROW_GAP; 
     
     const startX = -boardWidth / 2 + TILE_SIZE / 2;
     const startY = -boardHeight / 2 + TILE_SIZE / 2;
@@ -194,20 +188,29 @@ export default function App() {
       const col = isEvenRow ? colInRow : (cols - 1 - colInRow);
       
       const x = startX + col * TILE_SIZE;
-      const y = startY + row * (TILE_SIZE + ROW_GAP);
+      const y = startY + row * (TILE_SIZE + ROW_GAP); // Añadir ROW_GAP a la posición Y
       
       const type = i === TOTAL_TILES - 1 
         ? { id: 'META', color: '#ffffff', icon: Trophy, label: 'Final' } 
         : TILE_TYPES[i % TILE_TYPES.length];
 
-      // Detectar esquinas para dibujar "puentes"
-      // Si es el último de una fila (pero no el último del juego)
-      if (colInRow === cols - 1 && i < TOTAL_TILES - 1) {
-          // El puente va justo debajo de esta casilla
-          bridgesData.push({ x, y: y + TILE_SIZE/2 + ROW_GAP/2, color: type.color });
+      // PUENTES: Conectar el final de una fila con el inicio de la siguiente
+      // Si estamos en la última columna (visual) y no es el final del juego
+      // La "última columna visual" depende de la dirección:
+      // Fila par (->): col 9. Fila impar (<-): col 0.
+      const isEndOfRow = (colInRow === cols - 1);
+      
+      if (isEndOfRow && i < TOTAL_TILES - 1) {
+          // El puente va verticalmente hacia abajo desde esta casilla
+          // Coordenada del puente: misma X, Y intermedia
+          bridgesData.push({ 
+              x: x, 
+              y: y + TILE_SIZE/2 + ROW_GAP/2, 
+              color: type.color 
+          });
       }
 
-      tiles.push({ x, y, type, index: i, isCorner: colInRow === cols - 1 });
+      tiles.push({ x, y, type, index: i, isCorner: isEndOfRow });
     }
     return { tilesData: tiles, bridges: bridgesData };
   }, []);
@@ -346,18 +349,17 @@ export default function App() {
       <div className="fixed inset-0 bg-sky-200 font-sans overflow-hidden">
           <div className="absolute inset-0 opacity-10 bg-[url('https://www.transparenttextures.com/patterns/graphy.png')]" />
 
-          {/* FASE: READY (Botón pequeño inicial) */}
           {phase === 'ready' && (
               <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/20 backdrop-blur-[2px]">
                   <div className="bg-white border-4 border-black p-6 rounded-3xl shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] animate-in zoom-in">
-                      <button onClick={() => setPhase('turn_start')} className="px-10 py-4 bg-green-500 text-white border-2 border-black rounded-xl font-black text-2xl hover:bg-green-400 transition-transform active:translate-y-1 active:shadow-none shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">EMPEZAR</button>
+                      <h2 className="text-2xl font-black text-center mb-4 uppercase">¿Listos?</h2>
+                      <button onClick={() => setPhase('turn_start')} className="px-8 py-3 bg-green-500 text-white border-2 border-black rounded-xl font-black text-xl hover:bg-green-400 transition-transform active:translate-y-1 active:shadow-none shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">EMPEZAR</button>
                   </div>
               </div>
           )}
 
-          {/* FASE: AVISO DE TURNO */}
           {phase === 'turn_start' && (
-             <div className="absolute inset-0 z-40 bg-black/30 backdrop-blur-[1px] flex items-center justify-center animate-in fade-in">
+             <div className="absolute inset-0 z-40 bg-black/40 backdrop-blur-[2px] flex items-center justify-center animate-in fade-in">
                  <div className="bg-white border-4 border-black rounded-3xl p-6 text-center shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] max-w-xs w-full">
                      <p className="text-gray-500 font-black uppercase tracking-widest text-xs mb-2">TURNO DE</p>
                      <h2 className="text-4xl font-black mb-6 truncate px-2 py-1 bg-gray-100 rounded-lg border-2 border-black mx-auto inline-block min-w-[150px]" style={{ color: activePlayer.color }}>{activePlayer.name}</h2>
@@ -368,7 +370,6 @@ export default function App() {
 
           {phase === 'spinning' && <Roulette onSpinComplete={handleSpinComplete} />}
 
-          {/* MODAL EVENTO */}
           {phase === 'event' && currentEvent && (
               <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 animate-in zoom-in">
                  <div className="w-full max-w-xs bg-white rounded-2xl border-4 border-black p-5 text-center shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] relative">
@@ -380,56 +381,81 @@ export default function App() {
                      </div>
                      <div className="bg-gray-100 p-4 rounded-xl border-2 border-black mb-4">
                          <p className="text-lg font-bold leading-tight">{currentEvent.data.text}</p>
-                         {currentEvent.data.actionText && <div className="mt-2 inline-block bg-yellow-300 border-2 border-black px-2 py-0.5 rounded-md text-black text-xs font-black uppercase"><AlertTriangle size={12} className="inline mr-1"/>{currentEvent.data.actionText}</div>}
+                         {currentEvent.data.actionText && <div className="mt-2 inline-block bg-yellow-300 border-2 border-black px-2 py-0.5 rounded-md text-black text-xs font-black uppercase">{currentEvent.data.actionText}</div>}
+                         {currentEvent.data.answer && (
+                            <details className="mt-2 pt-2 border-t-2 border-gray-300 cursor-pointer text-gray-500 hover:text-black">
+                                <summary className="text-xs italic list-none font-bold">Ver respuesta</summary>
+                                <p className="mt-1 text-green-600 font-black text-lg">{currentEvent.data.answer}</p>
+                            </details>
+                         )}
                      </div>
-                     <button onClick={() => handleEventClose((currentEvent.data.bonus || 0) + (currentEvent.data.penalty || 0))} className="w-full py-3 rounded-lg bg-black text-white border-2 border-black font-black text-sm hover:bg-gray-800">LISTO</button>
+                     <div className="grid grid-cols-2 gap-2">
+                         <button onClick={() => handleEventClose(0)} className="py-2 rounded-lg bg-gray-300 border-2 border-black font-bold text-sm hover:bg-gray-200">Saltar</button>
+                         <button onClick={() => handleEventClose((currentEvent.data.bonus || 0) + (currentEvent.data.penalty || 0))} className="py-2 rounded-lg bg-black text-white border-2 border-black font-black text-sm hover:bg-gray-800">LISTO</button>
+                     </div>
                  </div>
               </div>
           )}
 
-          {/* TABLERO */}
-          <div className="absolute inset-0 flex items-center justify-center overflow-auto p-4">
-             {/* Contenedor escalable para que quepa todo */}
-             <div className="relative transform scale-[0.6] md:scale-90 origin-center transition-transform">
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(10, 80px)', rowGap: '30px', columnGap: '0px' }}>
-                    {tilesData.map((tile) => (
-                        <div key={tile.index} className="w-20 h-20 flex items-center justify-center relative box-border"
-                            style={{ 
-                                backgroundColor: tile.type.id === 'META' ? 'white' : tile.type.color,
-                                border: '3px solid black', // Borde grueso
-                                borderRadius: '0px', // Cuadrados perfectos
-                            }}
-                        >
-                            {tile.type.id === 'META' ? <Trophy className="text-yellow-500 w-10 h-10" /> : <span className="text-white/80 font-black text-2xl drop-shadow-md">{tile.index + 1}</span>}
-                        </div>
-                    ))}
-                </div>
-
-                {/* PUENTES (BRIDGES) PARA CONECTAR FILAS */}
+          {/* TABLERO (ABSOLUTE POSITIONING) */}
+          <div className="absolute inset-0 flex items-center justify-center p-2 overflow-auto">
+             <div className="relative transform scale-[0.6] md:scale-90 origin-center transition-transform" 
+                  style={{ width: '800px', height: '550px' }}> {/* Contenedor fijo para centrar */}
+                
+                {/* PUENTES (Debajo de las casillas) */}
                 {bridges.map((bridge, i) => (
-                    <div key={i} className="absolute w-20 h-[36px] border-x-4 border-black z-0" 
+                    <div key={i} className="absolute w-[70px] border-x-4 border-black z-0" 
                          style={{ 
-                             left: bridge.x - 40, // Centrar (tile width 80 / 2)
-                             top: bridge.y - 20,  // Ajustar posición vertical
+                             left: bridge.x - TILE_SIZE/2, 
+                             top: bridge.y - ROW_GAP/2 - TILE_SIZE/2, 
+                             height: ROW_GAP + TILE_SIZE, // Conectar centros
                              backgroundColor: bridge.color 
                          }} 
                     />
                 ))}
 
-                {/* FICHAS DE JUGADORES */}
+                {/* CASILLAS */}
+                {tilesData.map((tile) => (
+                    <div 
+                        key={tile.index} 
+                        className="absolute flex items-center justify-center box-border z-10"
+                        style={{ 
+                            left: tile.x - TILE_SIZE/2,
+                            top: tile.y - TILE_SIZE/2,
+                            width: TILE_SIZE,
+                            height: TILE_SIZE,
+                            backgroundColor: tile.type.id === 'META' ? 'white' : tile.type.color,
+                            border: '3px solid black', 
+                            borderRadius: '0px', 
+                        }}
+                    >
+                        {tile.type.id === 'META' ? <Trophy className="text-yellow-500 w-10 h-10" /> : <span className="text-white/80 font-black text-2xl drop-shadow-md">{tile.index + 1}</span>}
+                        {tile.type.id !== 'META' && <tile.type.icon size={14} className="absolute top-1 right-1 text-black/20" />}
+                    </div>
+                ))}
+
+                {/* JUGADORES */}
                 {players.map((p, i) => {
                     const tile = tilesData[p.positionIndex];
                     const offset = (i * 6) - (players.length * 3); 
                     return (
-                        <div key={p.id} className="absolute w-10 h-10 rounded-full border-4 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,0.5)] transition-all duration-500 ease-in-out z-10 flex items-center justify-center"
-                            style={{ backgroundColor: p.color, left: tile.x - 40 + 35 + offset, top: tile.y - 40 + 35 + offset }}>
+                        <div 
+                            key={p.id} 
+                            className="absolute w-10 h-10 rounded-full border-4 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,0.5)] transition-all duration-500 ease-in-out z-20 flex items-center justify-center"
+                            style={{ 
+                                backgroundColor: p.color, 
+                                left: tile.x - 20 + offset, // Centrado manual (mitad de 40px width)
+                                top: tile.y - 20 + offset 
+                            }}
+                        >
+                            <span className="text-[10px] font-black text-white">{p.name.substring(0, 1)}</span>
                         </div>
                     );
                 })}
              </div>
           </div>
 
-          <button onClick={() => setView('menu')} className="absolute top-4 right-4 p-2 bg-white border-2 border-black rounded-lg hover:bg-red-100 text-black shadow-md z-30"><X size={20} /></button>
+          <button onClick={() => setView('menu')} className="absolute top-2 right-2 p-2 bg-white border-2 border-black rounded-lg hover:bg-red-100 text-black shadow-md z-30"><X size={20} /></button>
 
           {view === 'win' && (
               <div className="fixed inset-0 z-[100] flex items-center justify-center bg-yellow-400 animate-in zoom-in">
