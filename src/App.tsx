@@ -1,8 +1,8 @@
 import { useState, useMemo, useEffect } from 'react';
-import { UserPlus, Play, Skull, HelpCircle, Swords, PartyPopper, Zap, Trophy, Trash2, Users, Smartphone, X, ArrowLeft } from 'lucide-react';
+import { UserPlus, Play, Skull, HelpCircle, Swords, PartyPopper, Zap, AlertTriangle, Trophy, Trash2, Users, Smartphone, X, ArrowLeft, RotateCcw } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
-// --- CONFIGURACIÓN & DATOS ---
+// --- CONFIGURACIÓN ---
 const TOTAL_TILES = 50;
 
 interface Player {
@@ -24,9 +24,10 @@ interface TileData {
   y: number;
   type: TileType;
   index: number;
+  isCorner: boolean; // Para saber si es una casilla de bajada
 }
 
-// Colores más vibrantes para fondo claro
+// Colores estilo "Juego de Mesa Infantil"
 const TILE_TYPES: TileType[] = [
   { id: 'PELIGRO', color: '#ff5252', icon: Skull, label: 'Peligro' },     
   { id: 'TRIVIA', color: '#448aff', icon: HelpCircle, label: 'Trivia' },  
@@ -70,8 +71,12 @@ const Roulette = ({ onSpinComplete }: { onSpinComplete: (num: number) => void })
     setSpinning(true);
     
     const randomValue = Math.floor(Math.random() * 6) + 1;
+    // Ajuste matemático para que la aguja (arriba) caiga en el número correcto
+    // Segmentos: 6. Grados por segmento: 60.
+    // Orden visual (conic-gradient): 1, 2, 3, 4, 5, 6
+    // Para que salga el 1 (0-60deg) arriba, hay que rotar. 
+    // Simplificación visual: Giramos muchas veces y sumamos un offset aleatorio controlado
     const segmentAngle = 360 / 6;
-    // Ajuste para caer en el centro del segmento
     const targetAngle = 1800 + (6 - randomValue) * segmentAngle + segmentAngle / 2; 
     
     setRotation(targetAngle);
@@ -83,69 +88,35 @@ const Roulette = ({ onSpinComplete }: { onSpinComplete: (num: number) => void })
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-      <div className="bg-white border-4 border-black rounded-3xl p-6 flex flex-col items-center shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] max-w-xs w-full">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+      <div className="bg-white border-4 border-black rounded-3xl p-6 flex flex-col items-center shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] max-w-xs w-full animate-in zoom-in">
         {!result ? (
           <>
-            <h2 className="text-xl font-black text-black mb-4 uppercase tracking-wider">¡GIRA!</h2>
-            <div className="relative w-48 h-48 mb-6">
-              {/* Flecha indicadora */}
-              <div className="absolute -top-3 left-1/2 -translate-x-1/2 z-20 w-0 h-0 border-l-[10px] border-l-transparent border-r-[10px] border-r-transparent border-t-[20px] border-t-black drop-shadow-md" />
-              
-              {/* Rueda */}
+            <h2 className="text-2xl font-black text-black mb-4 uppercase tracking-wider">¡GIRA!</h2>
+            <div className="relative w-56 h-56 mb-6">
+              <div className="absolute -top-4 left-1/2 -translate-x-1/2 z-20 w-0 h-0 border-l-[15px] border-l-transparent border-r-[15px] border-r-transparent border-t-[25px] border-t-black drop-shadow-md" />
               <div 
                 className="w-full h-full rounded-full border-4 border-black overflow-hidden relative transition-transform duration-[3000ms] cubic-bezier(0.15, 0.80, 0.15, 1)"
                 style={{ transform: `rotate(${rotation}deg)` }}
               >
-                {/* Segmentos */}
                 <div className="w-full h-full rounded-full" style={{ 
-                  background: `conic-gradient(
-                    #ef4444 0deg 60deg, 
-                    #3b82f6 60deg 120deg, 
-                    #eab308 120deg 180deg, 
-                    #22c55e 180deg 240deg, 
-                    #a855f7 240deg 300deg, 
-                    #f97316 300deg 360deg
-                  )` 
+                  background: `conic-gradient(#ef4444 0deg 60deg, #3b82f6 60deg 120deg, #eab308 120deg 180deg, #22c55e 180deg 240deg, #a855f7 240deg 300deg, #f97316 300deg 360deg)` 
                 }}></div>
-                
-                {/* Números sobre los segmentos */}
                 {[1, 2, 3, 4, 5, 6].map((num, i) => (
-                   <span 
-                    key={num}
-                    className="absolute text-xl font-black text-white drop-shadow-md"
-                    style={{ 
-                      top: '15%', left: '50%', 
-                      transform: `translateX(-50%) rotate(${i * 60}deg) translateY(-10px)`, 
-                      transformOrigin: '0 85px' 
-                    }}
-                   >
-                     {num}
-                   </span>
+                   <span key={num} className="absolute text-2xl font-black text-white drop-shadow-md" style={{ top: '15%', left: '50%', transform: `translateX(-50%) rotate(${i * 60}deg) translateY(-20px)`, transformOrigin: '0 100px' }}>{num}</span>
                 ))}
-                
-                {/* Centro decorativo */}
-                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-6 h-6 bg-white rounded-full border-4 border-black" />
+                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-8 h-8 bg-white rounded-full border-4 border-black shadow-inner" />
               </div>
             </div>
-            <button 
-              onClick={spin}
-              disabled={spinning}
-              className="w-full py-3 bg-yellow-400 hover:bg-yellow-300 text-black border-2 border-black font-black text-lg rounded-xl shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-transform active:translate-y-1 active:shadow-none disabled:opacity-50"
-            >
-              {spinning ? '...' : 'GIRAR'}
+            <button onClick={spin} disabled={spinning} className="w-full py-4 bg-yellow-400 hover:bg-yellow-300 text-black border-2 border-black font-black text-xl rounded-xl shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-transform active:translate-y-1 active:shadow-none disabled:opacity-50">
+              {spinning ? 'GIRANDO...' : 'GIRAR'}
             </button>
           </>
         ) : (
-          <div className="text-center animate-in zoom-in duration-300 w-full">
-             <p className="text-slate-500 font-bold uppercase text-xs mb-2">RESULTADO</p>
-             <div className="text-8xl font-black text-black mb-6">{result}</div>
-             <button 
-               onClick={() => onSpinComplete(result)}
-               className="w-full py-3 bg-green-500 hover:bg-green-400 text-white border-2 border-black font-black text-lg rounded-xl shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-transform active:translate-y-1 active:shadow-none"
-             >
-               CONTINUAR
-             </button>
+          <div className="text-center w-full">
+             <p className="text-slate-500 font-bold uppercase text-xs mb-2">SALIO EL</p>
+             <div className="text-9xl font-black text-black mb-6">{result}</div>
+             <button onClick={() => onSpinComplete(result)} className="w-full py-4 bg-green-500 hover:bg-green-400 text-white border-2 border-black font-black text-xl rounded-xl shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-transform active:translate-y-1 active:shadow-none">AVANZAR</button>
           </div>
         )}
       </div>
@@ -153,35 +124,28 @@ const Roulette = ({ onSpinComplete }: { onSpinComplete: (num: number) => void })
   );
 };
 
-// --- APP PRINCIPAL ---
+// --- APP ---
 export default function App() {
-  // ESTADOS
   const [view, setView] = useState<'menu' | 'add-players' | 'game' | 'win'>('menu');
   const [players, setPlayers] = useState<Player[]>([]);
   const [turnIndex, setTurnIndex] = useState(0);
   const [isPortrait, setIsPortrait] = useState(false);
-  const audioEnabled = true;
   
-  // Game Flow States
   const [phase, setPhase] = useState<'ready' | 'turn_start' | 'spinning' | 'moving' | 'event'>('ready');
   const [stepsToMove, setStepsToMove] = useState(0);
   const [currentEvent, setCurrentEvent] = useState<any>(null); // eslint-disable-line @typescript-eslint/no-explicit-any
-
-  // Form States
   const [newPlayerName, setNewPlayerName] = useState('');
 
-  // --- RESPONSIVENESS & AUDIO ---
+  // Detectar orientación
   useEffect(() => {
-    const checkOrientation = () => setIsPortrait(window.innerHeight > window.innerWidth);
-    checkOrientation();
-    window.addEventListener('resize', checkOrientation);
-    return () => window.removeEventListener('resize', checkOrientation);
+    const check = () => setIsPortrait(window.innerHeight > window.innerWidth);
+    check();
+    window.addEventListener('resize', check);
+    return () => window.removeEventListener('resize', check);
   }, []);
 
-  const playSound = (type: 'click' | 'step' | 'win') => {
-    if (!audioEnabled) return;
+  const playSound = (type: 'click' | 'step') => {
     try {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const AudioContext = (window as any).AudioContext || (window as any).webkitAudioContext;
         if (!AudioContext) return;
         const ctx = new AudioContext();
@@ -189,34 +153,35 @@ export default function App() {
         const gain = ctx.createGain();
         osc.connect(gain);
         gain.connect(ctx.destination);
-        
         const now = ctx.currentTime;
         if (type === 'click') {
             osc.frequency.setValueAtTime(600, now);
             osc.frequency.exponentialRampToValueAtTime(100, now + 0.1);
             gain.gain.setValueAtTime(0.1, now);
             gain.gain.linearRampToValueAtTime(0, now + 0.1);
-            osc.start(now); osc.stop(now + 0.1);
-        } else if (type === 'step') {
+        } else {
             osc.type = 'triangle';
             osc.frequency.setValueAtTime(300, now);
             gain.gain.setValueAtTime(0.05, now);
             gain.gain.linearRampToValueAtTime(0, now + 0.05);
-            osc.start(now); osc.stop(now + 0.05);
         }
+        osc.start(now); osc.stop(now + 0.1);
     } catch(e) {}
   };
 
-  // --- GENERACIÓN DE TABLERO CUADRÍCULA (SNAKE GRID) ---
-  const tilesData = useMemo(() => {
+  // --- GENERACIÓN TABLERO SERPIENTE ---
+  const { tilesData, bridges } = useMemo(() => {
     const tiles: TileData[] = [];
+    const bridgesData: { x: number, y: number, color: string }[] = [];
+    
     const rows = 5; 
     const cols = 10;
+    const TILE_SIZE = 80; // Tamaño cuadrado
+    const ROW_GAP = 30;   // Espacio vertical entre filas
     
-    // Dimensiones fijas para que encajen perfectos los cuadrados
-    const TILE_SIZE = 80;
+    // Centrar tablero
     const boardWidth = cols * TILE_SIZE;
-    const boardHeight = rows * TILE_SIZE;
+    const boardHeight = rows * (TILE_SIZE + ROW_GAP) - ROW_GAP; // Restar último gap
     
     const startX = -boardWidth / 2 + TILE_SIZE / 2;
     const startY = -boardHeight / 2 + TILE_SIZE / 2;
@@ -224,32 +189,33 @@ export default function App() {
     for (let i = 0; i < TOTAL_TILES; i++) {
       const row = Math.floor(i / cols);
       const colInRow = i % cols;
-      // Serpiente: filas pares ->, impares <-
-      const col = row % 2 === 0 ? colInRow : (cols - 1 - colInRow);
+      // Lógica serpiente: Filas pares -> derecha, impares <- izquierda
+      const isEvenRow = row % 2 === 0;
+      const col = isEvenRow ? colInRow : (cols - 1 - colInRow);
       
-      // Coordenadas exactas para que se toquen (pegados)
       const x = startX + col * TILE_SIZE;
-      const y = startY + row * TILE_SIZE;
+      const y = startY + row * (TILE_SIZE + ROW_GAP);
       
       const type = i === TOTAL_TILES - 1 
         ? { id: 'META', color: '#ffffff', icon: Trophy, label: 'Final' } 
         : TILE_TYPES[i % TILE_TYPES.length];
 
-      tiles.push({ x, y, type, index: i });
+      // Detectar esquinas para dibujar "puentes"
+      // Si es el último de una fila (pero no el último del juego)
+      if (colInRow === cols - 1 && i < TOTAL_TILES - 1) {
+          // El puente va justo debajo de esta casilla
+          bridgesData.push({ x, y: y + TILE_SIZE/2 + ROW_GAP/2, color: type.color });
+      }
+
+      tiles.push({ x, y, type, index: i, isCorner: colInRow === cols - 1 });
     }
-    return tiles;
+    return { tilesData: tiles, bridges: bridgesData };
   }, []);
 
-  // --- GAME LOGIC ---
   const handleAddPlayer = () => {
     if (!newPlayerName.trim()) return;
     const colors = ['#ef4444', '#3b82f6', '#eab308', '#a855f7', '#f97316', '#10b981'];
-    setPlayers([...players, { 
-        id: Date.now(), 
-        name: newPlayerName, 
-        positionIndex: 0, 
-        color: colors[players.length % colors.length] 
-    }]);
+    setPlayers([...players, { id: Date.now(), name: newPlayerName, positionIndex: 0, color: colors[players.length % colors.length] }]);
     setNewPlayerName('');
     playSound('click');
   };
@@ -261,7 +227,7 @@ export default function App() {
 
   const startGame = () => {
     setView('game');
-    setPhase('ready'); // Empezar con el aviso pequeño
+    setPhase('ready');
   };
 
   const resetGame = () => {
@@ -271,7 +237,6 @@ export default function App() {
     setPhase('ready');
   };
 
-  // Movimiento paso a paso
   useEffect(() => {
     if (phase === 'moving' && stepsToMove > 0) {
         const timer = setTimeout(() => {
@@ -284,8 +249,7 @@ export default function App() {
                 return newPlayers;
             });
             setStepsToMove(s => s - 1);
-        }, 300); // Pasos más rápidos
-
+        }, 300);
         return () => clearTimeout(timer);
     } else if (phase === 'moving' && stepsToMove === 0) {
         const player = players[turnIndex];
@@ -322,8 +286,6 @@ export default function App() {
       setPhase('turn_start');
   };
 
-  // --- VISTAS ---
-
   if (isPortrait && view === 'game') {
     return (
         <div className="h-screen bg-black text-white flex flex-col items-center justify-center p-8 text-center animate-in fade-in">
@@ -333,16 +295,11 @@ export default function App() {
     );
   }
 
-  // MENÚ
   if (view === 'menu') {
       return (
           <div className="min-h-screen bg-sky-200 text-slate-900 flex flex-col items-center justify-center p-6 relative font-sans">
               <div className="absolute inset-0 opacity-10 bg-[url('https://www.transparenttextures.com/patterns/graphy.png')]" />
-              
-              <h1 className="text-6xl md:text-8xl font-black text-white mb-4 tracking-tighter drop-shadow-[5px_5px_0px_rgba(0,0,0,1)] text-stroke-3 text-stroke-black text-center" style={{ WebkitTextStroke: '3px black' }}>
-                  QUE DESCONTROL
-              </h1>
-              
+              <h1 className="text-6xl md:text-8xl font-black text-white mb-8 tracking-tighter drop-shadow-[5px_5px_0px_rgba(0,0,0,1)] text-center text-stroke-3 text-stroke-black" style={{ WebkitTextStroke: '3px black' }}>QUE DESCONTROL</h1>
               <div className="w-full max-w-md bg-white border-4 border-black rounded-3xl p-6 shadow-[10px_10px_0px_0px_rgba(0,0,0,1)] z-10">
                   <button onClick={() => setView('add-players')} className="w-full py-4 mb-4 bg-yellow-400 hover:bg-yellow-300 rounded-xl border-2 border-black font-black text-xl shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] flex items-center justify-center gap-3 transition-transform active:translate-y-1 active:shadow-none">
                       <Users className="w-6 h-6" /> JUGADORES ({players.length})
@@ -355,7 +312,6 @@ export default function App() {
       );
   }
 
-  // AGREGAR JUGADORES
   if (view === 'add-players') {
       return (
           <div className="min-h-screen bg-sky-200 text-slate-900 p-6 flex flex-col items-center">
@@ -365,28 +321,14 @@ export default function App() {
                        <h2 className="text-2xl font-black uppercase">Jugadores</h2>
                        <div className="w-10" /> 
                    </div>
-
                    <div className="flex gap-2 mb-6">
-                       <input 
-                         type="text" 
-                         value={newPlayerName}
-                         onChange={(e) => setNewPlayerName(e.target.value)}
-                         placeholder="Nombre..."
-                         className="flex-1 bg-gray-100 border-2 border-black rounded-xl px-4 py-3 text-lg font-bold outline-none focus:bg-white"
-                         onKeyDown={(e) => e.key === 'Enter' && handleAddPlayer()}
-                       />
-                       <button onClick={handleAddPlayer} disabled={!newPlayerName} className="bg-blue-500 hover:bg-blue-400 text-white border-2 border-black px-4 rounded-xl font-bold transition-transform active:translate-y-1 disabled:opacity-50">
-                           <UserPlus />
-                       </button>
+                       <input type="text" value={newPlayerName} onChange={(e) => setNewPlayerName(e.target.value)} placeholder="Nombre..." className="flex-1 bg-gray-100 border-2 border-black rounded-xl px-4 py-3 text-lg font-bold outline-none focus:bg-white" onKeyDown={(e) => e.key === 'Enter' && handleAddPlayer()} />
+                       <button onClick={handleAddPlayer} disabled={!newPlayerName} className="bg-blue-500 hover:bg-blue-400 text-white border-2 border-black px-4 rounded-xl font-bold transition-transform active:translate-y-1 disabled:opacity-50"><UserPlus /></button>
                    </div>
-
                    <div className="space-y-2 max-h-[50vh] overflow-y-auto">
                        {players.map((p) => (
                            <div key={p.id} className="flex items-center justify-between bg-gray-50 p-3 rounded-xl border-2 border-black animate-in slide-in-from-bottom-2">
-                               <div className="flex items-center gap-3">
-                                   <div className="w-8 h-8 rounded-full border-2 border-black" style={{ backgroundColor: p.color }} />
-                                   <span className="font-bold text-lg">{p.name}</span>
-                               </div>
+                               <div className="flex items-center gap-3"><div className="w-8 h-8 rounded-full border-2 border-black" style={{ backgroundColor: p.color }} /><span className="font-bold text-lg">{p.name}</span></div>
                                <button onClick={() => handleRemovePlayer(p.id)} className="text-red-500 hover:bg-red-100 p-2 rounded-lg"><Trash2 size={20} /></button>
                            </div>
                        ))}
@@ -397,49 +339,36 @@ export default function App() {
       );
   }
 
-  // --- JUEGO (TABLERO 2D PLANO) ---
+  // --- JUEGO (TABLERO 2D REBRANDING) ---
   const activePlayer = players[turnIndex];
 
   return (
       <div className="fixed inset-0 bg-sky-200 font-sans overflow-hidden">
-          {/* Patrón de fondo */}
           <div className="absolute inset-0 opacity-10 bg-[url('https://www.transparenttextures.com/patterns/graphy.png')]" />
 
           {/* FASE: READY (Botón pequeño inicial) */}
           {phase === 'ready' && (
-              <div className="absolute inset-0 z-50 flex items-center justify-center">
+              <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/20 backdrop-blur-[2px]">
                   <div className="bg-white border-4 border-black p-6 rounded-3xl shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] animate-in zoom-in">
-                      <h2 className="text-2xl font-black text-center mb-4 uppercase">¿Listos?</h2>
-                      <button 
-                        onClick={() => setPhase('turn_start')} 
-                        className="px-8 py-3 bg-green-500 text-white border-2 border-black rounded-xl font-black text-xl hover:bg-green-400 transition-transform active:translate-y-1 active:shadow-none shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]"
-                      >
-                        EMPEZAR
-                      </button>
+                      <button onClick={() => setPhase('turn_start')} className="px-10 py-4 bg-green-500 text-white border-2 border-black rounded-xl font-black text-2xl hover:bg-green-400 transition-transform active:translate-y-1 active:shadow-none shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">EMPEZAR</button>
                   </div>
               </div>
           )}
 
           {/* FASE: AVISO DE TURNO */}
           {phase === 'turn_start' && (
-             <div className="absolute inset-0 z-40 bg-black/40 backdrop-blur-[2px] flex items-center justify-center animate-in fade-in">
+             <div className="absolute inset-0 z-40 bg-black/30 backdrop-blur-[1px] flex items-center justify-center animate-in fade-in">
                  <div className="bg-white border-4 border-black rounded-3xl p-6 text-center shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] max-w-xs w-full">
                      <p className="text-gray-500 font-black uppercase tracking-widest text-xs mb-2">TURNO DE</p>
                      <h2 className="text-4xl font-black mb-6 truncate px-2 py-1 bg-gray-100 rounded-lg border-2 border-black mx-auto inline-block min-w-[150px]" style={{ color: activePlayer.color }}>{activePlayer.name}</h2>
-                     <button 
-                        onClick={() => setPhase('spinning')}
-                        className="w-full py-3 bg-blue-500 text-white border-2 border-black font-black text-xl rounded-xl hover:bg-blue-400 transition-transform active:translate-y-1 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] active:shadow-none"
-                     >
-                        TIRAR
-                     </button>
+                     <button onClick={() => setPhase('spinning')} className="w-full py-3 bg-blue-500 text-white border-2 border-black font-black text-xl rounded-xl hover:bg-blue-400 transition-transform active:translate-y-1 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] active:shadow-none">TIRAR</button>
                  </div>
              </div>
           )}
 
-          {/* RULETA */}
           {phase === 'spinning' && <Roulette onSpinComplete={handleSpinComplete} />}
 
-          {/* MODAL DE EVENTO (Reducido) */}
+          {/* MODAL EVENTO */}
           {phase === 'event' && currentEvent && (
               <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 animate-in zoom-in">
                  <div className="w-full max-w-xs bg-white rounded-2xl border-4 border-black p-5 text-center shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] relative">
@@ -451,86 +380,64 @@ export default function App() {
                      </div>
                      <div className="bg-gray-100 p-4 rounded-xl border-2 border-black mb-4">
                          <p className="text-lg font-bold leading-tight">{currentEvent.data.text}</p>
-                         {currentEvent.data.actionText && <div className="mt-2 inline-block bg-yellow-300 border-2 border-black px-2 py-0.5 rounded-md text-black text-xs font-black uppercase">{currentEvent.data.actionText}</div>}
-                         {currentEvent.data.answer && (
-                            <details className="mt-2 pt-2 border-t-2 border-gray-300 cursor-pointer text-gray-500 hover:text-black">
-                                <summary className="text-xs italic list-none font-bold">Ver respuesta</summary>
-                                <p className="mt-1 text-green-600 font-black text-lg">{currentEvent.data.answer}</p>
-                            </details>
-                         )}
+                         {currentEvent.data.actionText && <div className="mt-2 inline-block bg-yellow-300 border-2 border-black px-2 py-0.5 rounded-md text-black text-xs font-black uppercase"><AlertTriangle size={12} className="inline mr-1"/>{currentEvent.data.actionText}</div>}
                      </div>
-                     <div className="grid grid-cols-2 gap-2">
-                         <button onClick={() => handleEventClose(0)} className="py-2 rounded-lg bg-gray-300 border-2 border-black font-bold text-sm hover:bg-gray-200">Saltar</button>
-                         <button onClick={() => handleEventClose((currentEvent.data.bonus || 0) + (currentEvent.data.penalty || 0))} className="py-2 rounded-lg bg-black text-white border-2 border-black font-black text-sm hover:bg-gray-800">LISTO</button>
-                     </div>
+                     <button onClick={() => handleEventClose((currentEvent.data.bonus || 0) + (currentEvent.data.penalty || 0))} className="w-full py-3 rounded-lg bg-black text-white border-2 border-black font-black text-sm hover:bg-gray-800">LISTO</button>
                  </div>
               </div>
           )}
 
           {/* TABLERO */}
-          <div className="absolute inset-0 flex items-center justify-center p-2 overflow-auto">
-             {/* Contenedor del tablero escalable */}
-             <div className="relative transform scale-[0.8] md:scale-100 origin-center transition-transform">
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(10, 80px)', gap: 0 }}>
+          <div className="absolute inset-0 flex items-center justify-center overflow-auto p-4">
+             {/* Contenedor escalable para que quepa todo */}
+             <div className="relative transform scale-[0.6] md:scale-90 origin-center transition-transform">
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(10, 80px)', rowGap: '30px', columnGap: '0px' }}>
                     {tilesData.map((tile) => (
-                        <div 
-                            key={tile.index} 
-                            className="w-20 h-20 flex items-center justify-center relative box-border"
+                        <div key={tile.index} className="w-20 h-20 flex items-center justify-center relative box-border"
                             style={{ 
                                 backgroundColor: tile.type.id === 'META' ? 'white' : tile.type.color,
-                                border: '2px solid black', // Borde negro grueso
-                                opacity: 1
+                                border: '3px solid black', // Borde grueso
+                                borderRadius: '0px', // Cuadrados perfectos
                             }}
                         >
-                            {tile.type.id === 'META' ? (
-                                <Trophy className="text-yellow-500 w-8 h-8" />
-                            ) : (
-                                <span className="text-black/30 font-black text-xl">{tile.index + 1}</span>
-                            )}
-                            {/* Pequeño icono en la esquina */}
-                            {tile.type.id !== 'META' && (
-                                <tile.type.icon size={14} className="absolute top-1 right-1 text-black/20" />
-                            )}
+                            {tile.type.id === 'META' ? <Trophy className="text-yellow-500 w-10 h-10" /> : <span className="text-white/80 font-black text-2xl drop-shadow-md">{tile.index + 1}</span>}
                         </div>
                     ))}
                 </div>
 
-                {/* JUGADORES (Fichas estilo peón clásico) */}
+                {/* PUENTES (BRIDGES) PARA CONECTAR FILAS */}
+                {bridges.map((bridge, i) => (
+                    <div key={i} className="absolute w-20 h-[36px] border-x-4 border-black z-0" 
+                         style={{ 
+                             left: bridge.x - 40, // Centrar (tile width 80 / 2)
+                             top: bridge.y - 20,  // Ajustar posición vertical
+                             backgroundColor: bridge.color 
+                         }} 
+                    />
+                ))}
+
+                {/* FICHAS DE JUGADORES */}
                 {players.map((p, i) => {
                     const tile = tilesData[p.positionIndex];
-                    // Ajuste de offset simple para que no se superpongan exactamente
-                    const offset = (i * 5) - (players.length * 2.5); 
-                    
+                    const offset = (i * 6) - (players.length * 3); 
                     return (
-                        <div 
-                            key={p.id} 
-                            className="absolute w-8 h-8 rounded-full border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] transition-all duration-500 ease-in-out z-10 flex items-center justify-center"
-                            style={{
-                                backgroundColor: p.color,
-                                left: tile.x - 40 + 20 + offset, // Centrado relativo al grid (80px ancho)
-                                top: tile.y - 40 + 20 + offset
-                            }}
-                        >
-                            <span className="text-[10px] font-black text-white">{p.name.substring(0, 1)}</span>
+                        <div key={p.id} className="absolute w-10 h-10 rounded-full border-4 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,0.5)] transition-all duration-500 ease-in-out z-10 flex items-center justify-center"
+                            style={{ backgroundColor: p.color, left: tile.x - 40 + 35 + offset, top: tile.y - 40 + 35 + offset }}>
                         </div>
                     );
                 })}
              </div>
           </div>
 
-          {/* BOTÓN SALIR */}
-          <button onClick={() => setView('menu')} className="absolute top-2 right-2 p-2 bg-white border-2 border-black rounded-lg hover:bg-red-100 text-black shadow-md z-30">
-              <X size={20} />
-          </button>
+          <button onClick={() => setView('menu')} className="absolute top-4 right-4 p-2 bg-white border-2 border-black rounded-lg hover:bg-red-100 text-black shadow-md z-30"><X size={20} /></button>
 
-          {/* PANTALLA VICTORIA */}
           {view === 'win' && (
               <div className="fixed inset-0 z-[100] flex items-center justify-center bg-yellow-400 animate-in zoom-in">
                   <div className="text-center text-black">
                       <Trophy size={100} className="mx-auto mb-4 animate-bounce" />
                       <h1 className="text-8xl font-black uppercase mb-4 drop-shadow-md text-white stroke-black" style={{ WebkitTextStroke: '3px black' }}>¡GANADOR!</h1>
                       <p className="text-4xl font-bold mb-12">{activePlayer.name}</p>
-                      <button onClick={resetGame} className="px-8 py-4 bg-white border-4 border-black text-black font-black text-2xl rounded-2xl hover:scale-105 transition-transform shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] active:shadow-none active:translate-y-2">VOLVER AL MENÚ</button>
+                      <button onClick={resetGame} className="px-8 py-4 bg-white border-4 border-black text-black font-black text-2xl rounded-2xl hover:scale-105 transition-transform shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] active:shadow-none active:translate-y-2"><RotateCcw className="inline mr-2" /> MENÚ</button>
                   </div>
               </div>
           )}
