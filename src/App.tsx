@@ -4,9 +4,10 @@ import type { LucideIcon } from 'lucide-react';
 
 // --- CONFIGURACIÓN ---
 const TOTAL_TILES = 50;
-const COLS = 5;
-const TILE_SIZE = 65; 
-const GAP = 15; 
+// Ajustes para móvil vertical (5 columnas)
+const TILE_SIZE = 60; 
+const ROW_GAP = 15; 
+const GAP = 15; // Espacio horizontal entre columnas (si se usara en layout, aquí definido para consistencia)
 
 interface Player {
   id: number;
@@ -30,7 +31,7 @@ interface TileData {
   isCorner: boolean; 
 }
 
-// Colores vibrantes
+// Colores vibrantes estilo tablero infantil
 const TILE_TYPES: TileType[] = [
   { id: 'PELIGRO', color: '#ff5252', icon: Skull, label: 'Peligro' },     
   { id: 'TRIVIA', color: '#448aff', icon: HelpCircle, label: 'Trivia' },  
@@ -165,35 +166,30 @@ export default function App() {
     const tiles: TileData[] = [];
     const bridgesData: { x: number, y: number, color: string }[] = [];
     
-    // Dimensiones totales
-    const boardWidth = COLS * TILE_SIZE + (COLS - 1) * GAP;
-    // Centramos el tablero en el contenedor (asumiendo contenedor de ~350px - 400px en móvil)
-    // Pero aquí calculamos posiciones relativas al contenedor del tablero
+    // Configuración VERTICAL: 5 columnas (ancho móvil)
+    const cols = 5;
+    
     const startX = 0; 
     const startY = 0;
 
     for (let i = 0; i < TOTAL_TILES; i++) {
-      const row = Math.floor(i / COLS);
-      const colInRow = i % COLS;
-      
-      // Lógica serpiente:
-      // Filas pares (0, 2...): Izquierda -> Derecha
-      // Filas impares (1, 3...): Derecha -> Izquierda
+      const row = Math.floor(i / cols);
+      const colInRow = i % cols;
+      // Serpiente: filas pares -> derecha, impares <- izquierda
       const isEvenRow = row % 2 === 0;
-      const col = isEvenRow ? colInRow : (COLS - 1 - colInRow);
+      const col = isEvenRow ? colInRow : (cols - 1 - colInRow);
       
       const x = startX + col * (TILE_SIZE + GAP);
-      const y = startY + row * (TILE_SIZE + GAP);
+      const y = startY + row * (TILE_SIZE + ROW_GAP);
       
       const type = i === TOTAL_TILES - 1 
         ? { id: 'META', color: '#ffffff', icon: Trophy, label: 'Final' } 
         : TILE_TYPES[i % TILE_TYPES.length];
 
       // PUENTES (Escaleras)
-      // Se dibujan cuando la fila termina y conecta con la de abajo
-      // Fin fila par: colInRow == COLS - 1 (Indice 4). Conecta con la de abajo a la derecha.
-      // Fin fila impar: colInRow == COLS - 1 (Indice 4, visualmente izquierda). Conecta con la de abajo a la izquierda.
-      if (colInRow === COLS - 1 && i < TOTAL_TILES - 1) {
+      const isEndOfRow = (colInRow === cols - 1);
+      
+      if (isEndOfRow && i < TOTAL_TILES - 1) {
           bridgesData.push({ 
               x: x, 
               y: y + TILE_SIZE, // Justo debajo de la casilla
@@ -201,7 +197,7 @@ export default function App() {
           });
       }
 
-      tiles.push({ x, y, type, index: i, isCorner: colInRow === COLS - 1 });
+      tiles.push({ x, y, type, index: i, isCorner: isEndOfRow });
     }
     return { tilesData: tiles, bridges: bridgesData };
   }, []);
@@ -355,8 +351,8 @@ export default function App() {
              <div className="flex justify-center min-h-full items-start pt-4 pb-32"> 
                  {/* Contenedor relativo para posicionar tiles absolutos */}
                  <div className="relative" style={{ 
-                     width: COLS * (TILE_SIZE + GAP) - GAP, 
-                     height: Math.ceil(TOTAL_TILES/COLS) * (TILE_SIZE + GAP) 
+                     width: 5 * (TILE_SIZE + GAP) - GAP, // 5 columnas
+                     height: Math.ceil(TOTAL_TILES/5) * (TILE_SIZE + ROW_GAP) 
                  }}>
                     
                     {/* PUENTES (Escaleras de bajada) */}
@@ -366,7 +362,7 @@ export default function App() {
                                  left: bridge.x, 
                                  top: bridge.y, 
                                  width: TILE_SIZE, 
-                                 height: GAP,
+                                 height: ROW_GAP + 5, // Un poco extra para solapar
                              }} 
                         >
                             {/* Diseño de escalera visual */}
