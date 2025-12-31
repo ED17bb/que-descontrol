@@ -1,11 +1,12 @@
 import { useState, useMemo, useEffect } from 'react';
-import { UserPlus, Play, Skull, HelpCircle, Swords, PartyPopper, Zap, Trophy, Trash2, Users, Smartphone, X, ArrowLeft, RotateCcw } from 'lucide-react';
+import { UserPlus, Play, Skull, HelpCircle, Swords, PartyPopper, Zap, Trophy, Trash2, Users, X, ArrowLeft, RotateCcw, AlertTriangle } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
 // --- CONFIGURACIÓN ---
 const TOTAL_TILES = 50;
-const TILE_SIZE = 70; // Tamaño base (se escalará en móviles)
-const ROW_GAP = 30;   // Espacio entre filas
+// Ajustes para móvil vertical (5 columnas)
+const TILE_SIZE = 60; 
+const ROW_GAP = 15; 
 
 interface Player {
   id: number;
@@ -42,23 +43,23 @@ const EVENTS_DB: Record<string, { text: string; actionText?: string; penalty?: n
   PELIGRO: [
     { text: "Todos cambian de lugar a la izquierda.", penalty: 0 },
     { text: "10 flexiones o retrocede 3.", penalty: -3, actionText: "Fallo: -3" },
-    { text: "El suelo es lava. El último en subirse a algo pierde.", penalty: -2, actionText: "Perdedor: -2" },
+    { text: "El suelo es lava. El último pierde.", penalty: -2, actionText: "Perdedor: -2" },
   ],
   TRIVIA: [
     { text: "¿Capital de Francia?", answer: "París", bonus: 1, actionText: "Acierta: +1" },
-    { text: "¿Cuántos lados tiene un hexágono?", answer: "6", bonus: 1, actionText: "Acierta: +1" },
+    { text: "¿Lados de un hexágono?", answer: "6", bonus: 1, actionText: "Acierta: +1" },
   ],
   CHAMUYO: [
-    { text: "Cuenta un chiste. Si nadie se ríe, retrocede 2.", penalty: -2 },
-    { text: "Envía un audio cantando al grupo de la familia.", penalty: -3 },
+    { text: "Cuenta un chiste malo.", penalty: -2 },
+    { text: "Envía un audio cantando.", penalty: -3 },
   ],
   SUERTE: [
     { text: "Avanza 2 casillas gratis.", bonus: 2 },
     { text: "Te perdiste. Retrocede 1.", penalty: -1 },
   ],
   VS: [
-    { text: "Piedra, Papel o Tijera con el de la derecha.", penalty: -1, actionText: "Perdedor: -1" },
-    { text: "Miradas fijas con el de la izquierda.", penalty: 0, actionText: "El que parpadea pierde" },
+    { text: "Piedra, Papel o Tijera (Derecha).", penalty: -1, actionText: "Perdedor: -1" },
+    { text: "Miradas fijas (Izquierda).", penalty: 0, actionText: "El que parpadea pierde" },
   ]
 };
 
@@ -126,7 +127,7 @@ export default function App() {
   const [view, setView] = useState<'menu' | 'add-players' | 'game' | 'win'>('menu');
   const [players, setPlayers] = useState<Player[]>([]);
   const [turnIndex, setTurnIndex] = useState(0);
-  const audioEnabled = true; // Audio siempre activo
+  const audioEnabled = true;
   
   const [phase, setPhase] = useState<'ready' | 'turn_start' | 'spinning' | 'moving' | 'event'>('ready');
   const [stepsToMove, setStepsToMove] = useState(0);
@@ -159,13 +160,14 @@ export default function App() {
     } catch(e) {}
   };
 
-  // --- GENERACIÓN TABLERO (10 COLUMNAS) ---
+  // --- GENERACIÓN TABLERO VERTICAL ---
   const { tilesData, bridges } = useMemo(() => {
     const tiles: TileData[] = [];
     const bridgesData: { x: number, y: number, color: string }[] = [];
     
-    const cols = 10; // 10 columnas como pediste
-    const rows = Math.ceil(TOTAL_TILES / cols); // 5 filas
+    // Configuración VERTICAL: 5 columnas (ancho móvil)
+    const cols = 5;
+    const rows = Math.ceil(TOTAL_TILES / cols); // 10 filas para 50 tiles
     
     const boardWidth = cols * TILE_SIZE;
     const boardHeight = rows * (TILE_SIZE + ROW_GAP) - ROW_GAP;
@@ -176,8 +178,7 @@ export default function App() {
     for (let i = 0; i < TOTAL_TILES; i++) {
       const row = Math.floor(i / cols);
       const colInRow = i % cols;
-      // Serpiente: Filas pares (0,2,4) -> Izquierda a Derecha
-      // Filas impares (1,3) -> Derecha a Izquierda
+      // Serpiente: filas pares -> derecha, impares <- izquierda
       const isEvenRow = row % 2 === 0;
       const col = isEvenRow ? colInRow : (cols - 1 - colInRow);
       
@@ -188,11 +189,11 @@ export default function App() {
         ? { id: 'META', color: '#ffffff', icon: Trophy, label: 'Final' } 
         : TILE_TYPES[i % TILE_TYPES.length];
 
-      // PUENTES: Conectar bajadas
-      // Necesitamos puente si estamos al final visual de la fila y no es el último tile
-      // Fin visual fila par: colInRow == 9
-      // Fin visual fila impar: colInRow == 9 (porque 9 invertido es 0, el extremo izquierdo)
-      if (colInRow === cols - 1 && i < TOTAL_TILES - 1) {
+      // PUENTES VERTICALES
+      // Si es el final de la fila visual (y no el último tile del juego)
+      const isEndOfRow = (colInRow === cols - 1);
+      
+      if (isEndOfRow && i < TOTAL_TILES - 1) {
           bridgesData.push({ 
               x: x, 
               y: y + TILE_SIZE/2 + ROW_GAP/2, 
@@ -200,7 +201,7 @@ export default function App() {
           });
       }
 
-      tiles.push({ x, y, type, index: i, isCorner: colInRow === cols - 1 });
+      tiles.push({ x, y, type, index: i, isCorner: isEndOfRow });
     }
     return { tilesData: tiles, bridges: bridgesData };
   }, []);
@@ -352,9 +353,9 @@ export default function App() {
           {/* TABLERO SCROLLABLE */}
           <div className="flex-1 overflow-auto relative p-8">
              <div className="flex justify-center min-h-full items-start pt-10 pb-32"> 
-                 <div className="relative transform scale-[0.6] origin-top"> {/* Escala para que 10 columnas quepan en vertical */}
+                 <div className="relative transform scale-[0.7] origin-top"> 
                     {/* GRID */}
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(10, 70px)', rowGap: '30px', columnGap: '0px' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 70px)', rowGap: '30px', columnGap: '0px' }}>
                         {tilesData.map((tile) => (
                             <div key={tile.index} className="w-[70px] h-[70px] flex items-center justify-center relative box-border"
                                 style={{ 
@@ -436,6 +437,7 @@ export default function App() {
                      </div>
                      <div className="bg-gray-100 p-4 rounded-xl border-2 border-black mb-6">
                          <p className="text-xl font-bold leading-tight">{currentEvent.data.text}</p>
+                         {currentEvent.data.actionText && <div className="mt-3 inline-block bg-yellow-300 border-2 border-black px-3 py-1 rounded-lg text-black text-sm font-black uppercase"><AlertTriangle size={14} className="inline mr-1"/>{currentEvent.data.actionText}</div>}
                      </div>
                      <div className="grid grid-cols-2 gap-3">
                          <button onClick={() => handleEventClose(0)} className="py-3 rounded-xl bg-gray-300 border-2 border-black font-bold hover:bg-gray-200">Saltar</button>
