@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
-import { UserPlus, Play, Skull, HelpCircle, Swords, PartyPopper, Zap, AlertTriangle, Trophy, Trash2, Users, Smartphone, X, ArrowLeft, RotateCcw } from 'lucide-react';
+import { UserPlus, Play, Skull, HelpCircle, Swords, PartyPopper, Zap, Trophy, Trash2, Users, Smartphone, X, ArrowLeft, RotateCcw } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
 // --- CONFIGURACIÓN ---
@@ -196,13 +196,10 @@ export default function App() {
 
       // PUENTES: Conectar el final de una fila con el inicio de la siguiente
       // Si estamos en la última columna (visual) y no es el final del juego
-      // La "última columna visual" depende de la dirección:
-      // Fila par (->): col 9. Fila impar (<-): col 0.
       const isEndOfRow = (colInRow === cols - 1);
       
       if (isEndOfRow && i < TOTAL_TILES - 1) {
           // El puente va verticalmente hacia abajo desde esta casilla
-          // Coordenada del puente: misma X, Y intermedia
           bridgesData.push({ 
               x: x, 
               y: y + TILE_SIZE/2 + ROW_GAP/2, 
@@ -382,12 +379,6 @@ export default function App() {
                      <div className="bg-gray-100 p-4 rounded-xl border-2 border-black mb-4">
                          <p className="text-lg font-bold leading-tight">{currentEvent.data.text}</p>
                          {currentEvent.data.actionText && <div className="mt-2 inline-block bg-yellow-300 border-2 border-black px-2 py-0.5 rounded-md text-black text-xs font-black uppercase">{currentEvent.data.actionText}</div>}
-                         {currentEvent.data.answer && (
-                            <details className="mt-2 pt-2 border-t-2 border-gray-300 cursor-pointer text-gray-500 hover:text-black">
-                                <summary className="text-xs italic list-none font-bold">Ver respuesta</summary>
-                                <p className="mt-1 text-green-600 font-black text-lg">{currentEvent.data.answer}</p>
-                            </details>
-                         )}
                      </div>
                      <div className="grid grid-cols-2 gap-2">
                          <button onClick={() => handleEventClose(0)} className="py-2 rounded-lg bg-gray-300 border-2 border-black font-bold text-sm hover:bg-gray-200">Saltar</button>
