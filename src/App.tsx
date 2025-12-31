@@ -1,11 +1,12 @@
 import { useState, useMemo, useEffect } from 'react';
-import { UserPlus, Play, Skull, HelpCircle, Swords, PartyPopper, Zap, Trophy, Trash2, Users, Smartphone, X, ArrowLeft, RotateCcw } from 'lucide-react';
+import { UserPlus, Play, Skull, HelpCircle, Swords, PartyPopper, Zap, Trophy, Trash2, Users, X, ArrowLeft, RotateCcw, AlertTriangle } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
 // --- CONFIGURACIÓN ---
 const TOTAL_TILES = 50;
-const TILE_SIZE = 70; // Tamaño de la casilla
-const ROW_GAP = 30;   // Espacio entre filas
+// Ajustamos tamaños para móvil vertical
+const TILE_SIZE = 60; 
+const ROW_GAP = 15; 
 
 interface Player {
   id: number;
@@ -26,10 +27,9 @@ interface TileData {
   y: number;
   type: TileType;
   index: number;
-  isCorner: boolean; 
 }
 
-// Colores estilo "Juego de Mesa Infantil"
+// Colores vibrantes
 const TILE_TYPES: TileType[] = [
   { id: 'PELIGRO', color: '#ff5252', icon: Skull, label: 'Peligro' },     
   { id: 'TRIVIA', color: '#448aff', icon: HelpCircle, label: 'Trivia' },  
@@ -42,23 +42,23 @@ const EVENTS_DB: Record<string, { text: string; actionText?: string; penalty?: n
   PELIGRO: [
     { text: "Todos cambian de lugar a la izquierda.", penalty: 0 },
     { text: "10 flexiones o retrocede 3.", penalty: -3, actionText: "Fallo: -3" },
-    { text: "El suelo es lava. El último en subirse a algo pierde.", penalty: -2, actionText: "Perdedor: -2" },
+    { text: "El suelo es lava. El último pierde.", penalty: -2, actionText: "Perdedor: -2" },
   ],
   TRIVIA: [
     { text: "¿Capital de Francia?", answer: "París", bonus: 1, actionText: "Acierta: +1" },
-    { text: "¿Cuántos lados tiene un hexágono?", answer: "6", bonus: 1, actionText: "Acierta: +1" },
+    { text: "¿Lados de un hexágono?", answer: "6", bonus: 1, actionText: "Acierta: +1" },
   ],
   CHAMUYO: [
-    { text: "Cuenta un chiste. Si nadie se ríe, retrocede 2.", penalty: -2 },
-    { text: "Envía un audio cantando al grupo de la familia.", penalty: -3 },
+    { text: "Cuenta un chiste malo.", penalty: -2 },
+    { text: "Envía un audio cantando.", penalty: -3 },
   ],
   SUERTE: [
     { text: "Avanza 2 casillas gratis.", bonus: 2 },
     { text: "Te perdiste. Retrocede 1.", penalty: -1 },
   ],
   VS: [
-    { text: "Piedra, Papel o Tijera con el de la derecha.", penalty: -1, actionText: "Perdedor: -1" },
-    { text: "Miradas fijas con el de la izquierda.", penalty: 0, actionText: "El que parpadea pierde" },
+    { text: "Piedra, Papel o Tijera (Derecha).", penalty: -1, actionText: "Perdedor: -1" },
+    { text: "Miradas fijas (Izquierda).", penalty: 0, actionText: "El que parpadea pierde" },
   ]
 };
 
@@ -126,19 +126,12 @@ export default function App() {
   const [view, setView] = useState<'menu' | 'add-players' | 'game' | 'win'>('menu');
   const [players, setPlayers] = useState<Player[]>([]);
   const [turnIndex, setTurnIndex] = useState(0);
-  const [isPortrait, setIsPortrait] = useState(false);
+  const audioEnabled = true;
   
   const [phase, setPhase] = useState<'ready' | 'turn_start' | 'spinning' | 'moving' | 'event'>('ready');
   const [stepsToMove, setStepsToMove] = useState(0);
   const [currentEvent, setCurrentEvent] = useState<any>(null); // eslint-disable-line @typescript-eslint/no-explicit-any
   const [newPlayerName, setNewPlayerName] = useState('');
-
-  useEffect(() => {
-    const check = () => setIsPortrait(window.innerHeight > window.innerWidth);
-    check();
-    window.addEventListener('resize', check);
-    return () => window.removeEventListener('resize', check);
-  }, []);
 
   const playSound = (type: 'click' | 'step') => {
     try {
@@ -165,41 +158,42 @@ export default function App() {
     } catch(e) {}
   };
 
-  // --- GENERACIÓN TABLERO SERPIENTE ---
+  // --- GENERACIÓN TABLERO VERTICAL ---
   const { tilesData, bridges } = useMemo(() => {
     const tiles: TileData[] = [];
     const bridgesData: { x: number, y: number, color: string }[] = [];
     
-    const rows = 5; 
-    const cols = 10;
+    // Configuración VERTICAL: 5 columnas x 10 filas (aprox para 50)
+    const cols = 5;
+    const rows = Math.ceil(TOTAL_TILES / cols);
     
     // Centrar tablero
     const boardWidth = cols * TILE_SIZE;
-    const boardHeight = rows * (TILE_SIZE + ROW_GAP) - ROW_GAP; 
+    const boardHeight = rows * (TILE_SIZE + ROW_GAP) - ROW_GAP;
     
     const startX = -boardWidth / 2 + TILE_SIZE / 2;
+    // Empezamos desde arriba
     const startY = -boardHeight / 2 + TILE_SIZE / 2;
 
     for (let i = 0; i < TOTAL_TILES; i++) {
       const row = Math.floor(i / cols);
       const colInRow = i % cols;
-      // Lógica serpiente: Filas pares -> derecha, impares <- izquierda
+      // Serpiente: filas pares -> derecha, impares <- izquierda
       const isEvenRow = row % 2 === 0;
       const col = isEvenRow ? colInRow : (cols - 1 - colInRow);
       
       const x = startX + col * TILE_SIZE;
-      const y = startY + row * (TILE_SIZE + ROW_GAP); // Añadir ROW_GAP a la posición Y
+      const y = startY + row * (TILE_SIZE + ROW_GAP);
       
       const type = i === TOTAL_TILES - 1 
         ? { id: 'META', color: '#ffffff', icon: Trophy, label: 'Final' } 
         : TILE_TYPES[i % TILE_TYPES.length];
 
-      // PUENTES: Conectar el final de una fila con el inicio de la siguiente
-      // Si estamos en la última columna (visual) y no es el final del juego
+      // PUENTES VERTICALES
+      // Si es el último de la fila (visual) y no es el final del juego
       const isEndOfRow = (colInRow === cols - 1);
       
       if (isEndOfRow && i < TOTAL_TILES - 1) {
-          // El puente va verticalmente hacia abajo desde esta casilla
           bridgesData.push({ 
               x: x, 
               y: y + TILE_SIZE/2 + ROW_GAP/2, 
@@ -207,7 +201,7 @@ export default function App() {
           });
       }
 
-      tiles.push({ x, y, type, index: i, isCorner: isEndOfRow });
+      tiles.push({ x, y, type, index: i });
     }
     return { tilesData: tiles, bridges: bridgesData };
   }, []);
@@ -286,20 +280,13 @@ export default function App() {
       setPhase('turn_start');
   };
 
-  if (isPortrait && view === 'game') {
-    return (
-        <div className="h-screen bg-black text-white flex flex-col items-center justify-center p-8 text-center animate-in fade-in">
-            <Smartphone className="w-24 h-24 mb-6 animate-spin text-yellow-400" style={{ animationDuration: '3s' }} />
-            <h1 className="text-3xl font-black mb-4">GIRA EL MÓVIL</h1>
-        </div>
-    );
-  }
+  // --- VISTAS ---
 
   if (view === 'menu') {
       return (
           <div className="min-h-screen bg-sky-200 text-slate-900 flex flex-col items-center justify-center p-6 relative font-sans">
               <div className="absolute inset-0 opacity-10 bg-[url('https://www.transparenttextures.com/patterns/graphy.png')]" />
-              <h1 className="text-6xl md:text-8xl font-black text-white mb-8 tracking-tighter drop-shadow-[5px_5px_0px_rgba(0,0,0,1)] text-center text-stroke-3 text-stroke-black" style={{ WebkitTextStroke: '3px black' }}>QUE DESCONTROL</h1>
+              <h1 className="text-6xl font-black text-white mb-8 tracking-tighter drop-shadow-[4px_4px_0px_rgba(0,0,0,1)] text-center text-stroke-3 text-stroke-black" style={{ WebkitTextStroke: '2px black' }}>QUE DESCONTROL</h1>
               <div className="w-full max-w-md bg-white border-4 border-black rounded-3xl p-6 shadow-[10px_10px_0px_0px_rgba(0,0,0,1)] z-10">
                   <button onClick={() => setView('add-players')} className="w-full py-4 mb-4 bg-yellow-400 hover:bg-yellow-300 rounded-xl border-2 border-black font-black text-xl shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] flex items-center justify-center gap-3 transition-transform active:translate-y-1 active:shadow-none">
                       <Users className="w-6 h-6" /> JUGADORES ({players.length})
@@ -315,16 +302,27 @@ export default function App() {
   if (view === 'add-players') {
       return (
           <div className="min-h-screen bg-sky-200 text-slate-900 p-6 flex flex-col items-center">
-               <div className="w-full max-w-md bg-white border-4 border-black rounded-3xl p-6 shadow-[10px_10px_0px_0px_rgba(0,0,0,1)] mt-10">
+               <div className="w-full max-w-md bg-white border-4 border-black rounded-3xl p-6 shadow-[10px_10px_0px_0px_rgba(0,0,0,1)] mt-4">
                    <div className="flex items-center justify-between mb-6">
                        <button onClick={() => setView('menu')} className="p-2 bg-gray-200 border-2 border-black rounded-full hover:bg-gray-300"><ArrowLeft /></button>
                        <h2 className="text-2xl font-black uppercase">Jugadores</h2>
                        <div className="w-10" /> 
                    </div>
-                   <div className="flex gap-2 mb-6">
-                       <input type="text" value={newPlayerName} onChange={(e) => setNewPlayerName(e.target.value)} placeholder="Nombre..." className="flex-1 bg-gray-100 border-2 border-black rounded-xl px-4 py-3 text-lg font-bold outline-none focus:bg-white" onKeyDown={(e) => e.key === 'Enter' && handleAddPlayer()} />
-                       <button onClick={handleAddPlayer} disabled={!newPlayerName} className="bg-blue-500 hover:bg-blue-400 text-white border-2 border-black px-4 rounded-xl font-bold transition-transform active:translate-y-1 disabled:opacity-50"><UserPlus /></button>
+                   {/* Layout en columna para móvil */}
+                   <div className="flex flex-col gap-3 mb-6">
+                       <input 
+                         type="text" 
+                         value={newPlayerName}
+                         onChange={(e) => setNewPlayerName(e.target.value)}
+                         placeholder="Escribe un nombre..."
+                         className="w-full bg-gray-100 border-2 border-black rounded-xl px-4 py-3 text-lg font-bold outline-none focus:bg-white"
+                         onKeyDown={(e) => e.key === 'Enter' && handleAddPlayer()}
+                       />
+                       <button onClick={handleAddPlayer} disabled={!newPlayerName} className="w-full bg-blue-500 hover:bg-blue-400 text-white border-2 border-black py-3 rounded-xl font-bold transition-transform active:translate-y-1 disabled:opacity-50 flex items-center justify-center gap-2">
+                           <UserPlus /> AÑADIR
+                       </button>
                    </div>
+
                    <div className="space-y-2 max-h-[50vh] overflow-y-auto">
                        {players.map((p) => (
                            <div key={p.id} className="flex items-center justify-between bg-gray-50 p-3 rounded-xl border-2 border-black animate-in slide-in-from-bottom-2">
@@ -339,122 +337,121 @@ export default function App() {
       );
   }
 
-  // --- JUEGO (TABLERO 2D REBRANDING) ---
+  // --- JUEGO (VERTICAL) ---
   const activePlayer = players[turnIndex];
 
   return (
-      <div className="fixed inset-0 bg-sky-200 font-sans overflow-hidden">
+      <div className="fixed inset-0 bg-sky-200 font-sans flex flex-col">
           <div className="absolute inset-0 opacity-10 bg-[url('https://www.transparenttextures.com/patterns/graphy.png')]" />
 
-          {phase === 'ready' && (
-              <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/20 backdrop-blur-[2px]">
-                  <div className="bg-white border-4 border-black p-6 rounded-3xl shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] animate-in zoom-in">
-                      <h2 className="text-2xl font-black text-center mb-4 uppercase">¿Listos?</h2>
-                      <button onClick={() => setPhase('turn_start')} className="px-8 py-3 bg-green-500 text-white border-2 border-black rounded-xl font-black text-xl hover:bg-green-400 transition-transform active:translate-y-1 active:shadow-none shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">EMPEZAR</button>
-                  </div>
+          {/* HUD SUPERIOR */}
+          <div className="relative z-30 bg-white border-b-4 border-black p-4 shadow-md flex items-center justify-between">
+              <div>
+                  <p className="text-xs font-black text-gray-400 uppercase tracking-widest">TURNO DE</p>
+                  <h2 className="text-2xl font-black truncate max-w-[200px]" style={{ color: activePlayer?.color }}>{activePlayer?.name}</h2>
               </div>
-          )}
+              <button onClick={() => setView('menu')} className="p-2 bg-gray-100 border-2 border-black rounded-lg text-black hover:bg-red-100 transition-colors">
+                  <X size={20} />
+              </button>
+          </div>
 
-          {phase === 'turn_start' && (
-             <div className="absolute inset-0 z-40 bg-black/40 backdrop-blur-[2px] flex items-center justify-center animate-in fade-in">
-                 <div className="bg-white border-4 border-black rounded-3xl p-6 text-center shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] max-w-xs w-full">
-                     <p className="text-gray-500 font-black uppercase tracking-widest text-xs mb-2">TURNO DE</p>
-                     <h2 className="text-4xl font-black mb-6 truncate px-2 py-1 bg-gray-100 rounded-lg border-2 border-black mx-auto inline-block min-w-[150px]" style={{ color: activePlayer.color }}>{activePlayer.name}</h2>
-                     <button onClick={() => setPhase('spinning')} className="w-full py-3 bg-blue-500 text-white border-2 border-black font-black text-xl rounded-xl hover:bg-blue-400 transition-transform active:translate-y-1 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] active:shadow-none">TIRAR</button>
-                 </div>
-             </div>
-          )}
-
-          {phase === 'spinning' && <Roulette onSpinComplete={handleSpinComplete} />}
-
-          {phase === 'event' && currentEvent && (
-              <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 animate-in zoom-in">
-                 <div className="w-full max-w-xs bg-white rounded-2xl border-4 border-black p-5 text-center shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] relative">
-                     <div className="absolute -top-8 left-1/2 -translate-x-1/2 w-16 h-16 rounded-full flex items-center justify-center border-4 border-black shadow-md bg-white">
-                         <currentEvent.tileType.icon size={32} style={{ color: currentEvent.tileType.color }} />
-                     </div>
-                     <div className="mt-8 mb-4">
-                        <h3 className="text-2xl font-black uppercase italic" style={{ color: currentEvent.tileType.color }}>{currentEvent.tileType.label}</h3>
-                     </div>
-                     <div className="bg-gray-100 p-4 rounded-xl border-2 border-black mb-4">
-                         <p className="text-lg font-bold leading-tight">{currentEvent.data.text}</p>
-                         {currentEvent.data.actionText && <div className="mt-2 inline-block bg-yellow-300 border-2 border-black px-2 py-0.5 rounded-md text-black text-xs font-black uppercase">{currentEvent.data.actionText}</div>}
-                     </div>
-                     <div className="grid grid-cols-2 gap-2">
-                         <button onClick={() => handleEventClose(0)} className="py-2 rounded-lg bg-gray-300 border-2 border-black font-bold text-sm hover:bg-gray-200">Saltar</button>
-                         <button onClick={() => handleEventClose((currentEvent.data.bonus || 0) + (currentEvent.data.penalty || 0))} className="py-2 rounded-lg bg-black text-white border-2 border-black font-black text-sm hover:bg-gray-800">LISTO</button>
-                     </div>
-                 </div>
-              </div>
-          )}
-
-          {/* TABLERO (ABSOLUTE POSITIONING) */}
-          <div className="absolute inset-0 flex items-center justify-center p-2 overflow-auto">
-             <div className="relative transform scale-[0.6] md:scale-90 origin-center transition-transform" 
-                  style={{ width: '800px', height: '550px' }}> {/* Contenedor fijo para centrar */}
-                
-                {/* PUENTES (Debajo de las casillas) */}
-                {bridges.map((bridge, i) => (
-                    <div key={i} className="absolute w-[70px] border-x-4 border-black z-0" 
-                         style={{ 
-                             left: bridge.x - TILE_SIZE/2, 
-                             top: bridge.y - ROW_GAP/2 - TILE_SIZE/2, 
-                             height: ROW_GAP + TILE_SIZE, // Conectar centros
-                             backgroundColor: bridge.color 
-                         }} 
-                    />
-                ))}
-
-                {/* CASILLAS */}
-                {tilesData.map((tile) => (
-                    <div 
-                        key={tile.index} 
-                        className="absolute flex items-center justify-center box-border z-10"
-                        style={{ 
-                            left: tile.x - TILE_SIZE/2,
-                            top: tile.y - TILE_SIZE/2,
-                            width: TILE_SIZE,
-                            height: TILE_SIZE,
-                            backgroundColor: tile.type.id === 'META' ? 'white' : tile.type.color,
-                            border: '3px solid black', 
-                            borderRadius: '0px', 
-                        }}
-                    >
-                        {tile.type.id === 'META' ? <Trophy className="text-yellow-500 w-10 h-10" /> : <span className="text-white/80 font-black text-2xl drop-shadow-md">{tile.index + 1}</span>}
-                        {tile.type.id !== 'META' && <tile.type.icon size={14} className="absolute top-1 right-1 text-black/20" />}
+          {/* TABLERO SCROLLABLE */}
+          <div className="flex-1 overflow-auto relative p-8">
+             <div className="flex justify-center min-h-full items-start pt-10 pb-32"> {/* Padding bottom extra para controles */}
+                 <div className="relative transform scale-[1] origin-top">
+                    {/* GRID VERTICAL */}
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 70px)', rowGap: '30px', columnGap: '0px' }}>
+                        {tilesData.map((tile) => (
+                            <div key={tile.index} className="w-[70px] h-[70px] flex items-center justify-center relative box-border"
+                                style={{ 
+                                    backgroundColor: tile.type.id === 'META' ? 'white' : tile.type.color,
+                                    border: '3px solid black', 
+                                    borderRadius: '0px', 
+                                }}
+                            >
+                                {tile.type.id === 'META' ? <Trophy className="text-yellow-500 w-8 h-8" /> : <span className="text-white/80 font-black text-xl drop-shadow-md">{tile.index + 1}</span>}
+                            </div>
+                        ))}
                     </div>
-                ))}
 
-                {/* JUGADORES */}
-                {players.map((p, i) => {
-                    const tile = tilesData[p.positionIndex];
-                    const offset = (i * 6) - (players.length * 3); 
-                    return (
-                        <div 
-                            key={p.id} 
-                            className="absolute w-10 h-10 rounded-full border-4 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,0.5)] transition-all duration-500 ease-in-out z-20 flex items-center justify-center"
-                            style={{ 
-                                backgroundColor: p.color, 
-                                left: tile.x - 20 + offset, // Centrado manual (mitad de 40px width)
-                                top: tile.y - 20 + offset 
-                            }}
-                        >
-                            <span className="text-[10px] font-black text-white">{p.name.substring(0, 1)}</span>
-                        </div>
-                    );
-                })}
+                    {/* PUENTES */}
+                    {bridges.map((bridge, i) => (
+                        <div key={i} className="absolute w-[60px] border-x-4 border-black z-0" 
+                             style={{ 
+                                 left: bridge.x - TILE_SIZE/2 + 5, // Ajuste fino por borde
+                                 top: bridge.y - ROW_GAP/2 - TILE_SIZE/2, 
+                                 height: ROW_GAP + TILE_SIZE, 
+                                 backgroundColor: bridge.color 
+                             }} 
+                        />
+                    ))}
+
+                    {/* JUGADORES */}
+                    {players.map((p, i) => {
+                        const tile = tilesData[p.positionIndex];
+                        const offset = (i * 5) - (players.length * 2.5); 
+                        return (
+                            <div 
+                                key={p.id} 
+                                className="absolute w-8 h-8 rounded-full border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,0.5)] transition-all duration-500 ease-in-out z-20 flex items-center justify-center"
+                                style={{ 
+                                    backgroundColor: p.color, 
+                                    left: tile.x - 35 + 35 - 4 + offset, // Ajustes finos para centrar en 70px
+                                    top: tile.y - 35 + 35 - 4 + offset 
+                                }}
+                            >
+                                <span className="text-[10px] font-black text-white">{p.name.substring(0, 1)}</span>
+                            </div>
+                        );
+                    })}
+                 </div>
              </div>
           </div>
 
-          <button onClick={() => setView('menu')} className="absolute top-2 right-2 p-2 bg-white border-2 border-black rounded-lg hover:bg-red-100 text-black shadow-md z-30"><X size={20} /></button>
+          {/* CONTROLES INFERIORES */}
+          <div className="relative z-40 p-4 pb-8 pointer-events-none flex justify-center">
+              {phase === 'ready' && (
+                  <button onClick={() => setPhase('turn_start')} className="pointer-events-auto px-10 py-4 bg-green-500 text-white border-2 border-black rounded-xl font-black text-xl hover:bg-green-400 transition-transform active:translate-y-1 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">EMPEZAR</button>
+              )}
+
+              {phase === 'turn_start' && (
+                 <button onClick={() => setPhase('spinning')} className="pointer-events-auto w-full max-w-xs py-4 bg-blue-500 text-white border-2 border-black font-black text-xl rounded-xl hover:bg-blue-400 transition-transform active:translate-y-1 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] active:shadow-none animate-bounce">
+                    TIRAR RULETA
+                 </button>
+              )}
+          </div>
+
+          {/* OVERLAYS */}
+          {phase === 'spinning' && <Roulette onSpinComplete={handleSpinComplete} />}
+
+          {phase === 'event' && currentEvent && (
+              <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-6 animate-in zoom-in">
+                 <div className="w-full max-w-sm bg-white rounded-2xl border-4 border-black p-6 text-center shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] relative">
+                     <div className="absolute -top-10 left-1/2 -translate-x-1/2 w-20 h-20 rounded-full flex items-center justify-center border-4 border-black shadow-md bg-white">
+                         <currentEvent.tileType.icon size={40} style={{ color: currentEvent.tileType.color }} />
+                     </div>
+                     <div className="mt-10 mb-4">
+                        <h3 className="text-3xl font-black uppercase italic" style={{ color: currentEvent.tileType.color }}>{currentEvent.tileType.label}</h3>
+                     </div>
+                     <div className="bg-gray-100 p-4 rounded-xl border-2 border-black mb-6">
+                         <p className="text-xl font-bold leading-tight">{currentEvent.data.text}</p>
+                         {currentEvent.data.actionText && <div className="mt-3 inline-block bg-yellow-300 border-2 border-black px-3 py-1 rounded-lg text-black text-sm font-black uppercase"><AlertTriangle size={14} className="inline mr-1"/>{currentEvent.data.actionText}</div>}
+                     </div>
+                     <div className="grid grid-cols-2 gap-3">
+                         <button onClick={() => handleEventClose(0)} className="py-3 rounded-xl bg-gray-300 border-2 border-black font-bold hover:bg-gray-200">Saltar</button>
+                         <button onClick={() => handleEventClose((currentEvent.data.bonus || 0) + (currentEvent.data.penalty || 0))} className="py-3 rounded-xl bg-black text-white border-2 border-black font-black hover:bg-gray-800">LISTO</button>
+                     </div>
+                 </div>
+              </div>
+          )}
 
           {view === 'win' && (
-              <div className="fixed inset-0 z-[100] flex items-center justify-center bg-yellow-400 animate-in zoom-in">
+              <div className="fixed inset-0 z-[100] flex items-center justify-center bg-yellow-400 animate-in zoom-in p-4">
                   <div className="text-center text-black">
-                      <Trophy size={100} className="mx-auto mb-4 animate-bounce" />
-                      <h1 className="text-8xl font-black uppercase mb-4 drop-shadow-md text-white stroke-black" style={{ WebkitTextStroke: '3px black' }}>¡GANADOR!</h1>
-                      <p className="text-4xl font-bold mb-12">{activePlayer.name}</p>
-                      <button onClick={resetGame} className="px-8 py-4 bg-white border-4 border-black text-black font-black text-2xl rounded-2xl hover:scale-105 transition-transform shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] active:shadow-none active:translate-y-2"><RotateCcw className="inline mr-2" /> MENÚ</button>
+                      <Trophy size={80} className="mx-auto mb-4 animate-bounce" />
+                      <h1 className="text-6xl font-black uppercase mb-4 drop-shadow-md text-white stroke-black" style={{ WebkitTextStroke: '2px black' }}>¡GANADOR!</h1>
+                      <p className="text-4xl font-bold mb-12">{activePlayer?.name}</p>
+                      <button onClick={resetGame} className="px-8 py-4 bg-white border-4 border-black text-black font-black text-xl rounded-2xl hover:scale-105 transition-transform shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] active:shadow-none active:translate-y-2">VOLVER AL MENÚ</button>
                   </div>
               </div>
           )}
