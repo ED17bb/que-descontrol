@@ -169,7 +169,6 @@ export default function App() {
     const bridgesData: { x: number, y: number, color: string }[] = [];
     
     const cols = 5;
-    const rows = Math.ceil(TOTAL_TILES / cols); // 10 filas para 50 tiles
     
     const startX = 0; 
     const startY = 0;
@@ -375,7 +374,6 @@ export default function App() {
                         </div>
                     ))}
 
-                    {/* CASILLAS */}
                     {tilesData.map((tile) => (
                         <div 
                             key={tile.index} 
@@ -390,11 +388,10 @@ export default function App() {
                                 borderRadius: '8px', 
                             }}
                         >
-                            {tile.type.id === 'META' ? <Trophy className="text-yellow-500 w-8 h-8" /> : <span className="text-white/90 font-black text-xl drop-shadow-md">{tile.index + 1}</span>}
+                            {tile.type.id === 'META' ? <Trophy className="text-yellow-500 w-8 h-8" /> : <span className="text-white/80 font-black text-xl drop-shadow-md">{tile.index + 1}</span>}
                         </div>
                     ))}
 
-                    {/* JUGADORES */}
                     {players.map((p, i) => {
                         const tile = tilesData[p.positionIndex];
                         const offset = (i * 5) - (players.length * 2.5); 
@@ -406,7 +403,7 @@ export default function App() {
                                     backgroundColor: p.color, 
                                     // Centrar en la casilla + offset
                                     left: tile.x + (TILE_SIZE/2) - 16 + offset, 
-                                    top: tile.y + (TILE_SIZE/2) - 16 + offsetY 
+                                    top: tile.y + (TILE_SIZE/2) - 16 + offset 
                                 }}
                             >
                                 <span className="text-[10px] font-black text-white">{p.name.substring(0, 1)}</span>
