@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
-import { UserPlus, Play, Skull, HelpCircle, Swords, PartyPopper, Zap, Trophy, Trash2, Users, Smartphone, X, ArrowLeft, RotateCcw, AlertTriangle } from 'lucide-react';
+import { UserPlus, Play, Skull, HelpCircle, Swords, PartyPopper, Zap, Trophy, Trash2, Users, X, ArrowLeft, RotateCcw, AlertTriangle } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
 // --- CONFIGURACIÓN ---
@@ -85,19 +85,16 @@ const Roulette = ({ onSpinComplete }: { onSpinComplete: (num: number) => void })
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-      {/* Contenedor más pequeño (w-64 en vez de w-full max-w-xs) */}
       <div className="bg-white border-4 border-black rounded-3xl p-5 flex flex-col items-center shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] w-64 animate-in zoom-in">
         {!result ? (
           <>
             <h2 className="text-lg font-black text-black mb-4 uppercase tracking-wider">¡GIRA!</h2>
-            {/* Ruleta más pequeña (w-40 h-40) */}
             <div className="relative w-40 h-40 mb-5">
               <div className="absolute -top-3 left-1/2 -translate-x-1/2 z-20 w-0 h-0 border-l-[10px] border-l-transparent border-r-[10px] border-r-transparent border-t-[18px] border-t-black drop-shadow-md" />
               <div 
                 className="w-full h-full rounded-full border-4 border-black overflow-hidden relative transition-transform duration-[3000ms] cubic-bezier(0.15, 0.80, 0.15, 1)"
                 style={{ transform: `rotate(${rotation}deg)` }}
               >
-                {/* Fondo sin colores (solo grises alternados) */}
                 <div className="w-full h-full rounded-full" style={{ 
                   background: `conic-gradient(
                     #f3f4f6 0deg 60deg, 
@@ -141,8 +138,8 @@ export default function App() {
   const [stepsToMove, setStepsToMove] = useState(0);
   const [currentEvent, setCurrentEvent] = useState<any>(null); // eslint-disable-line @typescript-eslint/no-explicit-any
   const [newPlayerName, setNewPlayerName] = useState('');
-  
-  // Semilla para generar tablero aleatorio
+
+  // --- SEMILLA PARA TABLERO ALEATORIO ---
   const [boardSeed, setBoardSeed] = useState(0);
 
   const playSound = (type: 'click' | 'step') => {
@@ -176,6 +173,7 @@ export default function App() {
     const tiles: TileData[] = [];
     const bridgesData: { x: number, y: number, color: string }[] = [];
     
+    // Configuración VERTICAL: 5 columnas (ancho móvil)
     const cols = 5;
     
     const startX = 0; 
@@ -184,23 +182,27 @@ export default function App() {
     for (let i = 0; i < TOTAL_TILES; i++) {
       const row = Math.floor(i / cols);
       const colInRow = i % cols;
+      // Serpiente: filas pares -> derecha, impares <- izquierda
       const isEvenRow = row % 2 === 0;
       const col = isEvenRow ? colInRow : (cols - 1 - colInRow);
       
-      const x = startX + col * (TILE_SIZE + 0); // 0 gap para pegar los cuadros
-      const y = startY + row * (TILE_SIZE + ROW_GAP);
+      const x = startX + col * TILE_SIZE; // Pegados horizontalmente
+      const y = startY + row * (TILE_SIZE + ROW_GAP); // Separados verticalmente
       
-      // ALEATORIEDAD: Elegir tipo al azar en cada generación
+      // ALEATORIEDAD: Elegir tipo al azar
       const type = i === TOTAL_TILES - 1 
         ? { id: 'META', color: '#ffffff', icon: Trophy, label: 'Final' } 
-        : TILE_TYPES[Math.floor(Math.random() * TILE_TYPES.length)];
+        : TILE_TYPES[Math.floor(Math.random() * TILE_TYPES.length)]; // Usamos un random simple basado en render, para consistencia usaríamos boardSeed pero useMemo lo maneja
 
+      // PUENTES VERTICALES (Escalera)
+      // Conecta el final de una fila con el inicio de la siguiente
+      // El "final" de la fila visual es siempre la última columna en la dirección de lectura
       const isEndOfRow = (colInRow === cols - 1);
       
       if (isEndOfRow && i < TOTAL_TILES - 1) {
           bridgesData.push({ 
               x: x, 
-              y: y + TILE_SIZE, 
+              y: y + TILE_SIZE, // Comienza justo al final del tile actual
               color: type.color 
           });
       }
@@ -208,7 +210,7 @@ export default function App() {
       tiles.push({ x, y, type, index: i, isCorner: isEndOfRow });
     }
     return { tilesData: tiles, bridges: bridgesData };
-  }, [boardSeed]); // Regenerar cuando cambie la semilla
+  }, [boardSeed]); // Se regenera cuando cambia la semilla (al iniciar juego)
 
   const handleAddPlayer = () => {
     if (!newPlayerName.trim()) return;
@@ -224,7 +226,7 @@ export default function App() {
   };
 
   const startGame = () => {
-    setBoardSeed(Math.random()); // Generar nuevo tablero
+    setBoardSeed(Math.random()); // Nuevo tablero aleatorio
     setView('game');
     setPhase('ready');
   };
@@ -360,7 +362,7 @@ export default function App() {
              <div className="flex justify-center min-h-full items-start pt-4 pb-32"> 
                  {/* Contenedor relativo para posicionar tiles absolutos */}
                  <div className="relative" style={{ 
-                     width: 5 * (TILE_SIZE), // Ancho exacto sin Gaps
+                     width: 5 * TILE_SIZE, // 5 columnas exactas sin gap horizontal
                      height: Math.ceil(TOTAL_TILES/5) * (TILE_SIZE + ROW_GAP) 
                  }}>
                     
@@ -371,12 +373,16 @@ export default function App() {
                                  left: bridge.x, 
                                  top: bridge.y, 
                                  width: TILE_SIZE, 
-                                 height: ROW_GAP + 5, // Un poco extra para solapar
+                                 height: ROW_GAP, 
                              }} 
                         >
-                            {/* Diseño de escalera visual */}
-                            <div className="w-1/2 h-full border-x-4 border-black/20" />
-                            <div className="absolute top-1/2 w-3/4 h-1 bg-black/20" />
+                            {/* Rieles de la escalera */}
+                            <div className="absolute left-3 top-0 bottom-0 w-2 bg-black/20" />
+                            <div className="absolute right-3 top-0 bottom-0 w-2 bg-black/20" />
+                            {/* Peldaños */}
+                            <div className="absolute top-1/4 left-2 right-2 h-1 bg-black/20" />
+                            <div className="absolute top-1/2 left-2 right-2 h-1 bg-black/20" />
+                            <div className="absolute top-3/4 left-2 right-2 h-1 bg-black/20" />
                         </div>
                     ))}
 
@@ -384,16 +390,15 @@ export default function App() {
                     {tilesData.map((tile) => (
                         <div 
                             key={tile.index} 
-                            className="absolute flex items-center justify-center box-border z-10 shadow-[2px_2px_0px_0px_rgba(0,0,0,0.1)]"
+                            className="absolute flex items-center justify-center box-border z-10 shadow-[4px_4px_0px_0px_rgba(0,0,0,0.2)]"
                             style={{ 
                                 left: tile.x,
                                 top: tile.y,
                                 width: TILE_SIZE,
                                 height: TILE_SIZE,
                                 backgroundColor: tile.type.id === 'META' ? 'white' : tile.type.color,
-                                border: '2px solid black', 
-                                // Bordes pegados: eliminamos radio
-                                borderRadius: '0px', 
+                                border: '3px solid black', 
+                                borderRadius: '8px', 
                             }}
                         >
                             {tile.type.id === 'META' ? <Trophy className="text-yellow-500 w-8 h-8" /> : <span className="text-white/80 font-black text-xl drop-shadow-md">{tile.index + 1}</span>}
