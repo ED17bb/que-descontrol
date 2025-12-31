@@ -4,9 +4,9 @@ import type { LucideIcon } from 'lucide-react';
 
 // --- CONFIGURACIÓN ---
 const TOTAL_TILES = 50;
-// Ajustes para móvil vertical (5 columnas)
-const TILE_SIZE = 60; 
-const ROW_GAP = 15; 
+const COLS = 5;
+const TILE_SIZE = 65; 
+const GAP = 15; 
 
 interface Player {
   id: number;
@@ -30,7 +30,7 @@ interface TileData {
   isCorner: boolean; 
 }
 
-// Colores vibrantes estilo tablero infantil
+// Colores vibrantes
 const TILE_TYPES: TileType[] = [
   { id: 'PELIGRO', color: '#ff5252', icon: Skull, label: 'Peligro' },     
   { id: 'TRIVIA', color: '#448aff', icon: HelpCircle, label: 'Trivia' },  
@@ -160,48 +160,48 @@ export default function App() {
     } catch(e) {}
   };
 
-  // --- GENERACIÓN TABLERO VERTICAL ---
+  // --- GENERACIÓN TABLERO VERTICAL SERPIENTE ---
   const { tilesData, bridges } = useMemo(() => {
     const tiles: TileData[] = [];
     const bridgesData: { x: number, y: number, color: string }[] = [];
     
-    // Configuración VERTICAL: 5 columnas (ancho móvil)
-    const cols = 5;
-    const rows = Math.ceil(TOTAL_TILES / cols); // 10 filas para 50 tiles
-    
-    const boardWidth = cols * TILE_SIZE;
-    const boardHeight = rows * (TILE_SIZE + ROW_GAP) - ROW_GAP;
-    
-    const startX = -boardWidth / 2 + TILE_SIZE / 2;
-    const startY = -boardHeight / 2 + TILE_SIZE / 2;
+    // Dimensiones totales
+    const boardWidth = COLS * TILE_SIZE + (COLS - 1) * GAP;
+    // Centramos el tablero en el contenedor (asumiendo contenedor de ~350px - 400px en móvil)
+    // Pero aquí calculamos posiciones relativas al contenedor del tablero
+    const startX = 0; 
+    const startY = 0;
 
     for (let i = 0; i < TOTAL_TILES; i++) {
-      const row = Math.floor(i / cols);
-      const colInRow = i % cols;
-      // Serpiente: filas pares -> derecha, impares <- izquierda
-      const isEvenRow = row % 2 === 0;
-      const col = isEvenRow ? colInRow : (cols - 1 - colInRow);
+      const row = Math.floor(i / COLS);
+      const colInRow = i % COLS;
       
-      const x = startX + col * TILE_SIZE;
-      const y = startY + row * (TILE_SIZE + ROW_GAP);
+      // Lógica serpiente:
+      // Filas pares (0, 2...): Izquierda -> Derecha
+      // Filas impares (1, 3...): Derecha -> Izquierda
+      const isEvenRow = row % 2 === 0;
+      const col = isEvenRow ? colInRow : (COLS - 1 - colInRow);
+      
+      const x = startX + col * (TILE_SIZE + GAP);
+      const y = startY + row * (TILE_SIZE + GAP);
       
       const type = i === TOTAL_TILES - 1 
         ? { id: 'META', color: '#ffffff', icon: Trophy, label: 'Final' } 
         : TILE_TYPES[i % TILE_TYPES.length];
 
-      // PUENTES VERTICALES
-      // Si es el final de la fila visual (y no el último tile del juego)
-      const isEndOfRow = (colInRow === cols - 1);
-      
-      if (isEndOfRow && i < TOTAL_TILES - 1) {
+      // PUENTES (Escaleras)
+      // Se dibujan cuando la fila termina y conecta con la de abajo
+      // Fin fila par: colInRow == COLS - 1 (Indice 4). Conecta con la de abajo a la derecha.
+      // Fin fila impar: colInRow == COLS - 1 (Indice 4, visualmente izquierda). Conecta con la de abajo a la izquierda.
+      if (colInRow === COLS - 1 && i < TOTAL_TILES - 1) {
           bridgesData.push({ 
               x: x, 
-              y: y + TILE_SIZE/2 + ROW_GAP/2, 
+              y: y + TILE_SIZE, // Justo debajo de la casilla
               color: type.color 
           });
       }
 
-      tiles.push({ x, y, type, index: i, isCorner: isEndOfRow });
+      tiles.push({ x, y, type, index: i, isCorner: colInRow === COLS - 1 });
     }
     return { tilesData: tiles, bridges: bridgesData };
   }, []);
@@ -351,48 +351,65 @@ export default function App() {
           </div>
 
           {/* TABLERO SCROLLABLE */}
-          <div className="flex-1 overflow-auto relative p-8">
-             <div className="flex justify-center min-h-full items-start pt-10 pb-32"> 
-                 <div className="relative transform scale-[0.7] origin-top"> 
-                    {/* GRID */}
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 70px)', rowGap: '30px', columnGap: '0px' }}>
-                        {tilesData.map((tile) => (
-                            <div key={tile.index} className="w-[70px] h-[70px] flex items-center justify-center relative box-border"
-                                style={{ 
-                                    backgroundColor: tile.type.id === 'META' ? 'white' : tile.type.color,
-                                    border: '3px solid black', 
-                                    borderRadius: '0px', 
-                                }}
-                            >
-                                {tile.type.id === 'META' ? <Trophy className="text-yellow-500 w-8 h-8" /> : <span className="text-white/80 font-black text-xl drop-shadow-md">{tile.index + 1}</span>}
-                            </div>
-                        ))}
-                    </div>
-
-                    {/* PUENTES */}
+          <div className="flex-1 overflow-auto relative p-4">
+             <div className="flex justify-center min-h-full items-start pt-4 pb-32"> 
+                 {/* Contenedor relativo para posicionar tiles absolutos */}
+                 <div className="relative" style={{ 
+                     width: COLS * (TILE_SIZE + GAP) - GAP, 
+                     height: Math.ceil(TOTAL_TILES/COLS) * (TILE_SIZE + GAP) 
+                 }}>
+                    
+                    {/* PUENTES (Escaleras de bajada) */}
                     {bridges.map((bridge, i) => (
-                        <div key={i} className="absolute w-[60px] border-x-4 border-black z-0" 
+                        <div key={i} className="absolute z-0 flex flex-col items-center justify-center" 
                              style={{ 
-                                 left: bridge.x - TILE_SIZE/2 + 5, 
-                                 top: bridge.y - ROW_GAP/2 - TILE_SIZE/2, 
-                                 height: ROW_GAP + TILE_SIZE, 
-                                 backgroundColor: bridge.color 
+                                 left: bridge.x, 
+                                 top: bridge.y, 
+                                 width: TILE_SIZE, 
+                                 height: GAP,
                              }} 
-                        />
+                        >
+                            {/* Diseño de escalera visual */}
+                            <div className="w-1/2 h-full border-x-4 border-black/20" />
+                            <div className="absolute top-1/2 w-3/4 h-1 bg-black/20" />
+                        </div>
+                    ))}
+
+                    {/* CASILLAS */}
+                    {tilesData.map((tile) => (
+                        <div 
+                            key={tile.index} 
+                            className="absolute flex items-center justify-center box-border z-10 shadow-[4px_4px_0px_0px_rgba(0,0,0,0.2)]"
+                            style={{ 
+                                left: tile.x,
+                                top: tile.y,
+                                width: TILE_SIZE,
+                                height: TILE_SIZE,
+                                backgroundColor: tile.type.id === 'META' ? 'white' : tile.type.color,
+                                border: '3px solid black', 
+                                borderRadius: '12px', 
+                            }}
+                        >
+                            {tile.type.id === 'META' ? <Trophy className="text-yellow-500 w-8 h-8" /> : <span className="text-white/90 font-black text-xl drop-shadow-md">{tile.index + 1}</span>}
+                        </div>
                     ))}
 
                     {/* JUGADORES */}
                     {players.map((p, i) => {
                         const tile = tilesData[p.positionIndex];
-                        const offset = (i * 5) - (players.length * 2.5); 
+                        // Offset para que no se tapen si caen juntos
+                        const offsetX = (i % 2) * 10 - 5;
+                        const offsetY = Math.floor(i / 2) * 10 - 5;
+                        
                         return (
                             <div 
                                 key={p.id} 
                                 className="absolute w-8 h-8 rounded-full border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,0.5)] transition-all duration-500 ease-in-out z-20 flex items-center justify-center"
                                 style={{ 
                                     backgroundColor: p.color, 
-                                    left: tile.x - 35 + 35 - 4 + offset, 
-                                    top: tile.y - 35 + 35 - 4 + offset 
+                                    // Centrar en la casilla + offset
+                                    left: tile.x + (TILE_SIZE/2) - 16 + offsetX, 
+                                    top: tile.y + (TILE_SIZE/2) - 16 + offsetY 
                                 }}
                             >
                                 <span className="text-[10px] font-black text-white">{p.name.substring(0, 1)}</span>
